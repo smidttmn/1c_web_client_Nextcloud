@@ -1,0 +1,2 @@
+{"id":"nc1c-76w","title":"Настройка интеграции Nextcloud и 1С","status":"open","priority":2,"issue_type":"task","created_at":"2026-02-06T10:31:36.581906319+05:00","created_by":"smidt","updated_at":"2026-02-06T10:31:36.581906319+05:00","labels":["1c","integration","nextcloud"]}
+{"id":"nc1c-egp","title":"Исправить ошибку в прокси-сервере для AI интеграции","status":"open","priority":2,"issue_type":"bug","created_at":"2026-02-06T10:31:39.662738361+05:00","created_by":"smidt","updated_at":"2026-02-06T10:31:39.662738361+05:00","labels":["ai","error","proxy"]}
