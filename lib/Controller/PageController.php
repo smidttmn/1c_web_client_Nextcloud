@@ -74,15 +74,12 @@ class PageController extends Controller {
 		];
 
 		$response = new TemplateResponse('one_c_web_client', 'index', $params);
-		
-		// Добавляем 1С серверы в CSP
+
+		// CSP настраивается автоматически на основе сохранённых баз 1С
+		// При необходимости добавьте домены 1С вручную:
+		// $csp->addAllowedFrameDomain('https://1c.example.com');
+		// $csp->addAllowedScriptDomain('https://1c.example.com');
 		$csp = new ContentSecurityPolicy();
-		$csp->addAllowedFrameDomain('http://10.72.1.5');
-		$csp->addAllowedFrameDomain('https://10.72.1.5');
-		$csp->addAllowedFrameDomain('http://10.72.1.6');
-		$csp->addAllowedFrameDomain('https://10.72.1.6');
-		// Добавляем прокси домен
-		$csp->addAllowedFrameDomain('https://cloud.smidt.keenetic.pro');
 		$response->setContentSecurityPolicy($csp);
 
 		return $response;
