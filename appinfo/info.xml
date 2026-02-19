@@ -1,0 +1,34 @@
+<?xml version="1.0"?>
+<info xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:noNamespaceSchemaLocation="https://apps.nextcloud.com/schema/apps/info.xsd">
+    <id>one_c_web_client</id>
+    <name>1C WebClient</name>
+    <summary>Web client for 1C:Enterprise systems</summary>
+    <description><![CDATA[
+        This app provides a web client interface for accessing 1C:Enterprise systems.
+        Administrators can configure a list of 1C database URLs, which users can then
+        access through buttons in the Nextcloud interface.
+    ]]></description>
+    <version>1.0.0</version>
+    <licence>agpl</licence>
+    <author mail="admin@example.com">Nextcloud Team</author>
+    <namespace>OneCWebClient</namespace>
+    <category>integration</category>
+    <website>https://github.com/nextcloud/one_c_web_client</website>
+    <bugs>https://github.com/nextcloud/one_c_web_client/issues</bugs>
+    <repository type="git">https://github.com/nextcloud/one_c_web_client.git</repository>
+    <screenshot>https://example.com/screenshot.png</screenshot>
+    <dependencies>
+        <nextcloud min-version="31" max-version="32"/>
+    </dependencies>
+    <navigations>
+        <navigation>
+            <name>1C WebClient</name>
+            <route>one_c_web_client.page.index</route>
+        </navigation>
+    </navigations>
+    <settings>
+        <admin>OCA\OneCWebClient\Settings\AdminSettings</admin>
+        <admin-section>OCA\OneCWebClient\Settings\AdminSection</admin-section>
+    </settings>
+</info>
