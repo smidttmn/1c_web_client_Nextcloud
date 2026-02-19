@@ -1,8 +1,0 @@
-{
-  "tag_name": "v1.0.0",
-  "name": "Release v1.0.0 - Initial Release",
-  "body": "## one_c_web_client v1.0.0\n\nПервая стабильная версия приложения для интеграции 1С с Nextcloud.\n\n### Возможности:\n- ✅ Настройка списка баз 1С через административную панель\n- ✅ Открытие 1С во фрейме внутри Nextcloud\n- ✅ Поддержка нескольких баз данных\n- ✅ Безопасное HTTPS-подключение\n- ✅ Совместимость с Nextcloud 31-32\n- ✅ Автоматическая установка через deploy.sh\n\n### Установка:\n```bash\n./deploy.sh one_c_web_client_deploy.tar.gz\n```\n\n### Документация:\n- INSTALLATION_GUIDE.md - Полное руководство\n- QUICK_START_RU.md - Быстрый старт",
-  "target_commitish": "main",
-  "draft": false,
-  "prerelease": false
-}
