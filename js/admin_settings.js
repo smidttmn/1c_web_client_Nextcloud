@@ -5,7 +5,7 @@
     // Получаем переводы
     const translations = {
         namePlaceholder: t('one_c_web_client', 'Название базы'),
-        urlPlaceholder: t('one_c_web_client', 'URL базы (например, http://10.72.1.5/sgtbuh/)'),
+        urlPlaceholder: t('one_c_web_client', 'URL базы (например, https://192.168.1.100/buh/)'),
         removeText: t('one_c_web_client', 'Удалить'),
         errorNoDatabases: t('one_c_web_client', 'Необходимо добавить хотя бы одну базу 1С'),
         savingSettings: t('one_c_web_client', 'Сохранение настроек'),
