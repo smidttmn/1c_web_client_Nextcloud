@@ -312,14 +312,14 @@ ask_app_version() {
     echo ""
     print_info "Выберите версию приложения для установки:"
     echo "1) one_c_web_client (v1.0.0) - Базовая версия"
-    echo "2) one_c_web_client_v3 (v3.0.0) - Динамический прокси (рекомендуется)"
+    echo "2) one_c_web_client_v3 (v3.1.0) - Динамический прокси (рекомендуется)"
     echo ""
     
     read -p "Выберите версию [1-2]: " version_choice
     case "$version_choice" in
         2)
             APP_NAME="one_c_web_client_v3"
-            APP_VERSION="3.0.0"
+            APP_VERSION="3.1.0"
             ;;
         *)
             APP_NAME="one_c_web_client"
@@ -344,19 +344,79 @@ backup_config() {
 }
 
 install_app_files() {
-    local app_source="$1"
     local app_dest="$NEXTCLOUD_PATH/apps/$APP_NAME"
     
     print_step "2" "Копирование файлов приложения..."
     
-    # Создаем директорию
+    # Ищем архив с приложением
+    local app_archive=""
+    local search_paths=(
+        "./one_c_web_client_v3_deploy.tar.gz"
+        "./one_c_web_client_v3_full.tar.gz"
+        "/tmp/one_c_web_client_v3_deploy.tar.gz"
+        "/tmp/one_c_web_client_v3_full.tar.gz"
+    )
+    
+    for path in "${search_paths[@]}"; do
+        if [ -f "$path" ]; then
+            app_archive="$path"
+            break
+        fi
+    done
+    
+    # Если архив не найден, пробуем найти директорию с приложением
+    if [ -z "$app_archive" ]; then
+        local source_dirs=(
+            "./one_c_web_client_v3_clean"
+            "./one_c_web_client_v3"
+            "./$APP_NAME"
+        )
+        
+        for dir in "${source_dirs[@]}"; do
+            if [ -d "$dir" ] && [ -f "$dir/appinfo/info.xml" ]; then
+                app_source="$dir"
+                break
+            fi
+        done
+    fi
+    
+    # Создаем директорию приложения
     mkdir -p "$app_dest"
     
-    # Копируем файлы
-    if [ -d "$app_source" ]; then
+    # Копируем из архива или из директории
+    if [ -n "$app_archive" ]; then
+        print_info "Распаковка приложения из $app_archive..."
+        # Распаковываем во временную директорию
+        local temp_dir=$(mktemp -d)
+        tar -xzf "$app_archive" -C "$temp_dir"
+        
+        # Ищем директорию с приложением в архиве
+        local found_dir=""
+        for d in "$temp_dir"/*; do
+            if [ -d "$d" ] && [ -f "$d/appinfo/info.xml" ]; then
+                found_dir="$d"
+                break
+            fi
+        done
+        
+        if [ -n "$found_dir" ]; then
+            cp -r "$found_dir"/* "$app_dest/"
+            rm -rf "$temp_dir"
+            print_success "Файлы приложения скопированы из архива"
+        else
+            rm -rf "$temp_dir"
+            print_error "Не удалось найти приложение в архиве"
+            return 1
+        fi
+    elif [ -n "$app_source" ]; then
+        print_info "Копирование из $app_source..."
         cp -r "$app_source"/* "$app_dest/"
+        print_success "Файлы приложения скопированы"
     else
-        print_error "Исходная директория не найдена: $app_source"
+        print_error "Архив с приложением не найден!"
+        print_info "Положите один из файлов рядом со скриптом:"
+        echo "   - one_c_web_client_v3_deploy.tar.gz"
+        echo "   - one_c_web_client_v3_full.tar.gz"
         return 1
     fi
     
@@ -364,7 +424,7 @@ install_app_files() {
     chown -R www-data:www-data "$app_dest"
     chmod -R 755 "$app_dest"
     
-    print_success "Файлы приложения скопированы"
+    print_success "Права установлены"
 }
 
 configure_apache() {
@@ -667,7 +727,7 @@ main() {
     print_header "Начало установки"
     echo ""
     
-    install_app_files "/home/smidt/nc1c/$APP_NAME"
+    install_app_files
     configure_apache
     install_nextcloud_app
     restart_apache
