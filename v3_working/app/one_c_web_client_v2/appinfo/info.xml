@@ -1,0 +1,60 @@
+<?xml version="1.0"?>
+<info xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:noNamespaceSchemaLocation="https://apps.nextcloud.com/schema/apps/info.xsd">
+    <id>one_c_web_client_v2</id>
+    <name>1С:Предприятие (Proxy v2)</name>
+    <summary>Интеграция 1С:Предприятие с Nextcloud - Версия 2</summary>
+    <description><![CDATA[
+## 1С:Предприятие для Nextcloud (v2)
+
+Приложение для доступа к системам 1С:Предприятие прямо из интерфейса Nextcloud.
+
+**Версия 2** - может работать параллельно с оригинальным приложением one_c_web_client!
+
+### Возможности:
+- 🔐 Прямой доступ к 1С через Apache Reverse Proxy
+- 🎨 Красивый адаптивный интерфейс
+- 📱 Поддержка мобильных устройств
+- 🚀 Быстрая установка и настройка
+- 🔒 Безопасное соединение (HTTPS)
+
+### Как это работает:
+Все запросы к 1С проксируются через Apache сервер Nextcloud, что позволяет:
+- Обходить ограничения Mixed Content
+- Получать доступ к 1С в локальной сети
+- Использовать единый HTTPS домен
+
+### Требования:
+- Nextcloud 31 или 32
+- Apache с mod_proxy, mod_proxy_http
+- HTTPS на сервере Nextcloud
+- HTTPS на сервере 1С:Предприятие
+    ]]></description>
+    <version>2.0.0</version>
+    <licence>agpl</licence>
+    <author email="your.email@example.com">Your Name</author>
+    <namespace>OneCWebClientV2</namespace>
+    <category>integration</category>
+    <category>office</category>
+    <website>https://github.com/yourusername/onec_nextcloud_proxy</website>
+    <bugs>https://github.com/yourusername/onec_nextcloud_proxy/issues</bugs>
+    <repository type="git">https://github.com/yourusername/onec_nextcloud_proxy.git</repository>
+    <dependencies>
+        <nextcloud min-version="31" max-version="32"/>
+        <php min-version="7.4">
+            <extension>curl</extension>
+            <extension>json</extension>
+            <extension>mbstring</extension>
+        </php>
+    </dependencies>
+    <navigations>
+        <navigation>
+            <name>1С:Предприятие</name>
+            <route>one_c_web_client_v2.page.index</route>
+        </navigation>
+    </navigations>
+    <settings>
+        <admin>OCA\OneCWebClientV2\Settings\AdminSettings</admin>
+        <admin-section>OCA\OneCWebClientV2\Settings\AdminSection</admin-section>
+    </settings>
+</info>
