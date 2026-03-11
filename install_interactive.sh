@@ -458,33 +458,62 @@ configure_apache_full() {
     # Читаем оригинал
     cat "$APACHE_CONFIG" > "$temp_conf"
     
-    # Добавляем настройки прокси перед закрывающим </VirtualHost>
+    # Проверяем, есть ли уже наши настройки
     if ! grep -q "ProxyPass.*one_c" "$APACHE_CONFIG" 2>/dev/null; then
-        # Добавляем перед </VirtualHost>
-        sed -i "/<\/VirtualHost>/i \\
-    # one_c_web_client - Прокси для 1С\\
-    SSLProxyEngine on\\
-    SSLProxyVerify none\\
-    SSLProxyCheckPeerCN off\\
-    SSLProxyCheckPeerName off\\
-\\
-    # Исключения для статических файлов Nextcloud\\
-    ProxyPass /core !\\
-    ProxyPass /apps !\\
-    ProxyPass /dist !\\
-    ProxyPass /js !\\
-    ProxyPass /css !\\
-    ProxyPass /l10n !\\
-    ProxyPass /index.php !\\
-\\
-    # Прокси для 1С сервера: $ONE_C_SERVER\\
-    ProxyPass /$APP_NAME $ONE_C_SERVER/$APP_NAME retry=0 timeout=60\\
-    ProxyPassReverse /$APP_NAME $ONE_C_SERVER/$APP_NAME\\
-\\
-    # Разрешение фреймов\\
-    Header unset X-Frame-Options\\
-    Header always set Content-Security-Policy \"frame-ancestors 'self'; frame-src *; connect-src *; script-src 'self' 'unsafe-inline' 'unsafe-eval' *; style-src 'self' 'unsafe-inline' *;\"
-" "$temp_conf"
+        print_info "Настройки one_c_web_client не найдены, добавляем..."
+        
+        # Находим последний </VirtualHost> (HTTPS) и вставляем перед ним
+        # Используем awk для точной вставки
+        awk -v one_c_server="$ONE_C_SERVER" -v app_name="$APP_NAME" '
+        BEGIN {
+            inserted = 0
+        }
+        {
+            lines[NR] = $0
+        }
+        END {
+            # Ищем последний </VirtualHost>
+            last_vhost_end = 0
+            for (i = NR; i >= 1; i--) {
+                if (lines[i] ~ /<\/VirtualHost>/) {
+                    last_vhost_end = i
+                    break
+                }
+            }
+            
+            # Выводим все строки
+            for (i = 1; i <= NR; i++) {
+                if (i == last_vhost_end && !inserted) {
+                    # Вставляем перед </VirtualHost>
+                    print "    # one_c_web_client - Прокси для 1С"
+                    print "    SSLProxyEngine on"
+                    print "    SSLProxyVerify none"
+                    print "    SSLProxyCheckPeerCN off"
+                    print "    SSLProxyCheckPeerName off"
+                    print ""
+                    print "    # Исключения для статических файлов Nextcloud"
+                    print "    ProxyPass /core !"
+                    print "    ProxyPass /apps !"
+                    print "    ProxyPass /dist !"
+                    print "    ProxyPass /js !"
+                    print "    ProxyPass /css !"
+                    print "    ProxyPass /l10n !"
+                    print "    ProxyPass /index.php !"
+                    print ""
+                    print "    # Прокси для 1С сервера: " one_c_server
+                    print "    ProxyPass /" app_name " " one_c_server "/" app_name " retry=0 timeout=60"
+                    print "    ProxyPassReverse /" app_name " " one_c_server "/" app_name
+                    print "    ProxyPassReverseCookiePath / /"
+                    print ""
+                    print "    # Разрешение фреймов и CSP"
+                    print "    Header unset X-Frame-Options"
+                    print "    Header always set Content-Security-Policy \"frame-ancestors '"'"'self'"'"'; frame-src *; connect-src *; script-src '"'"'self'"'"' '"'"'unsafe-inline'"'"' '"'"'unsafe-eval'"'"' *; style-src '"'"'self'"'"' '"'"'unsafe-inline'"'"' *;\""
+                    print ""
+                }
+                print lines[i]
+            }
+        }
+        ' "$APACHE_CONFIG" > "$temp_conf"
     fi
     
     # Проверяем синтаксис
