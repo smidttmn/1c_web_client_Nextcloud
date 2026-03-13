@@ -48,7 +48,7 @@ echo "   ✅ Файлы удалены"
 # Шаг 4: Очищаем кэш
 echo "🧹 Шаг 4: Очистка кэша..."
 sudo -u www-data php "$NC_PATH/occ" maintenance:repair
-sudo -u www-data php "$NC_PATH/occ" cache:clear
+sudo -u www-data php "$NC_PATH/occ" memcache:clear 2>/dev/null || echo "   Команда memcache:clear недоступна"
 echo "   ✅ Кэш очищен"
 
 # Шаг 5: Распаковываем исправленную версию
@@ -76,7 +76,7 @@ fi
 # Шаг 8: Очищаем кэш ещё раз
 echo "🧹 Шаг 8: Повторная очистка кэша..."
 sudo -u www-data php "$NC_PATH/occ" maintenance:repair
-sudo -u www-data php "$NC_PATH/occ" cache:clear
+sudo -u www-data php "$NC_PATH/occ" memcache:clear 2>/dev/null || echo "   Команда memcache:clear недоступна"
 echo "   ✅ Кэш очищен"
 
 # Шаг 9: Перезапускаем Apache
