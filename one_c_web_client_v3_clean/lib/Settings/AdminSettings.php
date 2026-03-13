@@ -27,9 +27,10 @@ use OCP\Util;
 
 class AdminSettings implements ISettings {
 
-	public function __construct(
-		private IConfig $config
-	) {
+	private IConfig $config;
+
+	public function __construct(IConfig $config) {
+		$this->config = $config;
 	}
 
 	public function getForm(): TemplateResponse {
