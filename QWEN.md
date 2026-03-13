@@ -1,0 +1,2 @@
+## Qwen Added Memories
+- Проект one_c_web_client_v3 на паузе (13.03.2026). Сервер drive.nppsgt.com (Nextcloud 30.0.17.2). Проблема: PHP OPcache кэширует старый код Application.php с registerAdminSettings() (метод не существует в NC 30). Решение: full_reinstall.sh с перезапуском PHP-FPM. Файлы готовы: /tmp/full_reinstall.sh, one_c_web_client_v3_fixed.tar.gz. Задача: nc1c-xa2 (status:pending). Репозиторий: https://github.com/smidttmn/one_c_web_client.git
