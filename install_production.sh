@@ -3,7 +3,7 @@
 ###############################################################################
 # one_c_web_client_v3 - Установщик для продакшн-сервера
 # drive.technoorganic.info / drive.nppsgt.com
-# Версия: 3.2.0 - Исправленная конфигурация Apache
+# Версия: 3.2.1 - Поддержка Nextcloud 30-32
 # Дата: 13 марта 2026
 ###############################################################################
 
@@ -67,7 +67,7 @@ fi
 NEXTCLOUD_PATH="/var/www/html/nextcloud"
 APACHE_CONFIG="/etc/apache2/sites-available/nextcloud.conf"
 APP_NAME="one_c_web_client_v3"
-APP_VERSION="3.2.0"
+APP_VERSION="3.2.1"
 ONE_C_SERVER="https://10.72.1.5"
 ONE_C_SERVER_WS="wss://10.72.1.5"
 
@@ -138,10 +138,13 @@ install_app_files() {
     local app_archive=""
     local search_paths=(
         "./one_c_web_client_v3_deploy.tar.gz"
+        "./one_c_web_client_v3_nc30_deploy.tar.gz"
         "./one_c_web_client_v3_full.tar.gz"
         "./one_c_v3_all.tar.gz"
         "/tmp/one_c_web_client_v3_deploy.tar.gz"
-        "/home/smidt/one_c_web_client_deploy.tar.gz"
+        "/tmp/one_c_web_client_v3_nc30_deploy.tar.gz"
+        "/home/smidt/one_c_web_client_v3_deploy.tar.gz"
+        "/home/smidt/one_c_web_client_v3_nc30_deploy.tar.gz"
     )
 
     for path in "${search_paths[@]}"; do

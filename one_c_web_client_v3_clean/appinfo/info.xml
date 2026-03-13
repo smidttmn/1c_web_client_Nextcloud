@@ -6,15 +6,15 @@
     <summary>Динамический прокси для 1С:Предприятие</summary>
     <description><![CDATA[
         Приложение для доступа к системам 1С:Предприятие прямо из интерфейса Nextcloud.
-        
+
         Возможности:
         - Динамический прокси для неограниченного количества баз 1С
         - Защита от неавторизованного доступа через cookie Nextcloud
         - Админ-панель для настройки баз через веб-интерфейс
         - Красивый адаптивный интерфейс
-        - Полная поддержка Nextcloud 31-32
+        - Полная поддержка Nextcloud 30-32
     ]]></description>
-    <version>3.1.0</version>
+    <version>3.2.0</version>
     <licence>agpl</licence>
     <author mail="admin@example.com">Nextcloud Team</author>
     <namespace>OneCWebClient</namespace>
@@ -24,7 +24,9 @@
     <repository type="git">https://github.com/nextcloud/one_c_web_client.git</repository>
     <screenshot>https://example.com/screenshot.png</screenshot>
     <dependencies>
-        <nextcloud min-version="31" max-version="32"/>
+        <nextcloud min-version="30" max-version="32"/>
+        <php min-version="8.0" max-version="8.3"/>
+        <lib>openssl</lib>
     </dependencies>
     <navigations>
         <navigation>
