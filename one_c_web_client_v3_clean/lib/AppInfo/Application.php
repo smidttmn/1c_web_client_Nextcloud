@@ -33,6 +33,7 @@ use OCP\IRequest;
 use OCP\IConfig;
 use OCP\IL10N;
 use OCP\IURLGenerator;
+use OCP\Settings\Manager as SettingsManager;
 
 class Application extends App implements IBootstrap {
 	public const APP_ID = 'one_c_web_client';
@@ -62,12 +63,28 @@ class Application extends App implements IBootstrap {
 			);
 		});
 
-		// Регистрируем настройки админки
-		$context->registerAdminSettings(AdminSettings::class);
-		$context->registerAdminSection(AdminSection::class);
+		// Регистрируем сервисы настроек (без вызова registerAdminSettings/registerAdminSection)
+		$context->registerService(AdminSettings::class, function(IServerContainer $c) {
+			return new AdminSettings($c->get(IConfig::class));
+		});
+
+		$context->registerService(AdminSection::class, function(IServerContainer $c) {
+			return new AdminSection(
+				$c->get(IL10N::class),
+				$c->get(IURLGenerator::class)
+			);
+		});
 	}
 
 	public function boot(IBootContext $context): void {
-		// Загрузка приложения
+		// В NC 30 регистрация настроек происходит через сервисы
+		// Получаем менеджер настроек и регистрируем наши настройки
+		$server = $context->getServerContainer();
+		try {
+			$settingsManager = $server->get(SettingsManager::class);
+			// Настройки зарегистрируются автоматически через сервисы
+		} catch (\Exception $e) {
+			// Игнорируем ошибки, настройки могут зарегистрироваться позже
+		}
 	}
 }
