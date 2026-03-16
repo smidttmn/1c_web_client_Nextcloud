@@ -22,7 +22,9 @@
         console.log('one_c_web_client_v3: Elements found:', {
             databaseButtons: databaseButtons.length,
             frameContainer: !!frameContainer,
-            frame: !!frame
+            frame: !!frame,
+            frameTitle: !!frameTitle,
+            closeFrameBtn: !!closeFrameBtn
         });
 
         if (!frame || !frameContainer) {
@@ -42,14 +44,19 @@
 
             // Открываем фрейм напрямую по HTTPS
             console.log('one_c_web_client_v3: Opening directly via HTTPS:', url);
+            
+            // Сначала скрываем, потом меняем src, потом показываем
+            frameContainer.style.display = 'none';
             frame.src = url;
             frameTitle.textContent = dbName + ' - ' + url;
-
+            
             // Показываем контейнер фрейма
             frameContainer.style.display = 'block';
 
             // Прокрутка к фрейму
-            frameContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            setTimeout(() => {
+                frameContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
         }
 
         // Обработчики для кнопок
@@ -65,8 +72,11 @@
         // Закрытие фрейма
         if (closeFrameBtn) {
             closeFrameBtn.addEventListener('click', function() {
-                frame.src = 'about:blank';
+                // Очищаем src и скрываем контейнер
                 frameContainer.style.display = 'none';
+                setTimeout(() => {
+                    frame.src = 'about:blank';
+                }, 100);
             });
         }
 
