@@ -25,6 +25,8 @@
         <navigation>
             <name>1C WebClient</name>
             <route>one_c_web_client.page.index</route>
+            <icon>app.svg</icon>
+            <order>10</order>
         </navigation>
     </navigations>
     <settings>

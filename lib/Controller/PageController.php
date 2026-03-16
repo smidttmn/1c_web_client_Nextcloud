@@ -23,29 +23,34 @@ namespace OCA\OneCWebClient\Controller;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\TemplateResponse;
 use OCP\AppFramework\Http\ContentSecurityPolicy;
+use OCP\AppFramework\Http\JSONResponse;
 use OCP\IRequest;
 use OCP\IConfig;
 use OCP\IL10N;
 use OCP\IURLGenerator;
 use OCP\Util;
+use OCP\IUserSession;
 
 class PageController extends Controller {
 
 	private IConfig $config;
 	private IL10N $l10n;
 	private IURLGenerator $urlGenerator;
+	private IUserSession $userSession;
 
 	public function __construct(
 		string $AppName,
 		IRequest $request,
 		IConfig $config,
 		IL10N $l10n,
-		IURLGenerator $urlGenerator
+		IURLGenerator $urlGenerator,
+		IUserSession $userSession
 	) {
 		parent::__construct($AppName, $request);
 		$this->config = $config;
 		$this->l10n = $l10n;
 		$this->urlGenerator = $urlGenerator;
+		$this->userSession = $userSession;
 	}
 
 	/**
@@ -53,6 +58,13 @@ class PageController extends Controller {
 	 * @NoCSRFRequired
 	 */
 	public function index(): TemplateResponse {
+		// Проверка авторизации пользователя
+		$user = $this->userSession->getUser();
+		if ($user === null) {
+			// Пользователь не авторизован - перенаправляем на login
+			return new TemplateResponse('core', '403', [], 'guest');
+		}
+
 		$databasesJson = $this->config->getAppValue('one_c_web_client', 'databases', '[]');
 		$databases = json_decode($databasesJson, true) ?: [];
 
@@ -70,18 +82,37 @@ class PageController extends Controller {
 
 		$params = [
 			'databases' => $dbList,
-			'appName' => $this->appName
+			'appName' => $this->appName,
+			'userId' => $user->getUID()
 		];
 
 		$response = new TemplateResponse('one_c_web_client', 'index', $params);
 
 		// CSP настраивается автоматически на основе сохранённых баз 1С
-		// При необходимости добавьте домены 1С вручную:
-		// $csp->addAllowedFrameDomain('https://1c.example.com');
-		// $csp->addAllowedScriptDomain('https://1c.example.com');
 		$csp = new ContentSecurityPolicy();
 		$response->setContentSecurityPolicy($csp);
 
 		return $response;
+	}
+
+	/**
+	 * @NoAdminRequired
+	 * @NoCSRFRequired
+	 * Проверка авторизации для API
+	 */
+	public function checkAuth(): JSONResponse {
+		$user = $this->userSession->getUser();
+		if ($user === null) {
+			return new JSONResponse([
+				'authorized' => false,
+				'error' => 'User not authenticated'
+			], 401);
+		}
+
+		return new JSONResponse([
+			'authorized' => true,
+			'userId' => $user->getUID(),
+			'displayName' => $user->getDisplayName()
+		]);
 	}
 }

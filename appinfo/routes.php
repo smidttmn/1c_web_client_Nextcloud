@@ -20,7 +20,8 @@
 
 return [
 	'routes' => [
-		['name' => 'page#index', 'url' => '/', 'verb' => 'GET'],
+		['name' => 'page#index', 'url' => '/index', 'verb' => 'GET'],
+		['name' => 'page#checkAuth', 'url' => '/check-auth', 'verb' => 'GET'],
 		['name' => 'proxy#proxy', 'url' => '/proxy', 'verb' => 'GET'],
 		['name' => 'config#saveConfig', 'url' => '/config/save', 'verb' => 'POST'],
 	]

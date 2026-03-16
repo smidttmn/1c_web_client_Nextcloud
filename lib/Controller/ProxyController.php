@@ -11,18 +11,22 @@ use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\DataDisplayResponse;
 use OCP\IRequest;
 use OCP\IConfig;
+use OCP\IUserSession;
 
 class ProxyController extends Controller {
 
 	private IConfig $config;
+	private IUserSession $userSession;
 
 	public function __construct(
 		string $AppName,
 		IRequest $request,
-		IConfig $config
+		IConfig $config,
+		IUserSession $userSession
 	) {
 		parent::__construct($AppName, $request);
 		$this->config = $config;
+		$this->userSession = $userSession;
 	}
 
 	/**
@@ -31,6 +35,19 @@ class ProxyController extends Controller {
 	 * @PublicPage
 	 */
 	public function proxy(string $url = '', string $path = ''): DataDisplayResponse {
+		// ПРОВЕРКА АВТОРИЗАЦИИ - ЗАЩИТА ОТ ПРЯМЫХ ССЫЛОК
+		$user = $this->userSession->getUser();
+		if ($user === null) {
+			// Пользователь не авторизован - блокируем доступ
+			return new DataDisplayResponse('Access denied. Please login to Nextcloud first.', Http::STATUS_UNAUTHORIZED);
+		}
+
+		// Дополнительно проверяем, что пользователь имеет доступ к приложению
+		$userId = $user->getUID();
+		if (empty($userId)) {
+			return new DataDisplayResponse('Invalid user session', Http::STATUS_FORBIDDEN);
+		}
+
 		// Get URL from path if not provided directly
 		if (empty($url) && !empty($path)) {
 			$url = urldecode($path);
