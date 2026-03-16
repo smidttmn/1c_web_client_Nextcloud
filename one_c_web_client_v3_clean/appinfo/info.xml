@@ -31,7 +31,7 @@
     <navigations>
         <navigation>
             <name>1C WebClient</name>
-            <route>one_c_web_client.page.index</route>
+            <route>one_c_web_client_v3.page.index</route>
         </navigation>
     </navigations>
     <settings>
