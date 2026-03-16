@@ -35,7 +35,7 @@ class AdminSection implements IIconSection {
 	}
 
 	public function getID(): string {
-		return 'one_c_web_client';
+		return 'one_c_web_client_v3';
 	}
 
 	public function getName(): string {
@@ -47,6 +47,6 @@ class AdminSection implements IIconSection {
 	}
 
 	public function getIcon(): string {
-		return $this->urlGenerator->imagePath('one_c_web_client', 'app.svg');
+		return $this->urlGenerator->imagePath('one_c_web_client_v3', 'app.svg');
 	}
 }
