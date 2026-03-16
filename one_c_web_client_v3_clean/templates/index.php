@@ -37,14 +37,26 @@
 </div>
 
 <style>
-.one-c-container {
-    padding: 40px 20px;
-    max-width: 100%;
-    margin: 0 auto;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    min-height: 100vh;
-    width: 100%;
+* {
     box-sizing: border-box;
+}
+
+#app {
+    width: 100%;
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+}
+
+.one-c-container {
+    width: 100%;
+    min-height: 100vh;
+    padding: 40px 20px;
+    margin: 0;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 h1 {
@@ -53,6 +65,7 @@ h1 {
     text-align: center;
     font-size: 2.5em;
     text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+    width: 100%;
 }
 
 .database-buttons {
@@ -62,6 +75,7 @@ h1 {
     justify-content: center;
     margin-bottom: 30px;
     width: 100%;
+    max-width: 1400px;
 }
 
 .database-button {
@@ -99,6 +113,7 @@ h1 {
     border: 2px solid rgba(255,255,255,0.2);
     max-width: 600px;
     margin: 30px auto 0;
+    width: auto;
 }
 
 .info-message p {
@@ -153,9 +168,11 @@ h1 {
     box-shadow: 0 10px 40px rgba(0,0,0,0.3);
     background: white;
     width: 100%;
+    max-width: 100%;
     height: calc(100vh - 350px);
     min-height: 600px;
     position: relative;
+    flex: 1;
 }
 
 .frame-header {
@@ -165,6 +182,7 @@ h1 {
     padding: 15px 25px;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
+    width: 100%;
 }
 
 .frame-header h3 {
@@ -204,6 +222,7 @@ h1 {
     position: absolute;
     top: 55px;
     left: 0;
+    right: 0;
 }
 
 /* Адаптивность для планшетов */
@@ -229,6 +248,7 @@ h1 {
     
     .info-message {
         padding: 15px 20px;
+        width: auto;
     }
     
     .info-message p {
