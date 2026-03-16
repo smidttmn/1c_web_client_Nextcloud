@@ -4,14 +4,14 @@
 
     // Получаем переводы
     const translations = {
-        namePlaceholder: t('one_c_web_client', 'Название базы'),
-        urlPlaceholder: t('one_c_web_client', 'URL базы (например, https://192.168.1.100/buh/)'),
-        removeText: t('one_c_web_client', 'Удалить'),
-        errorNoDatabases: t('one_c_web_client', 'Необходимо добавить хотя бы одну базу 1С'),
-        savingSettings: t('one_c_web_client', 'Сохранение настроек'),
-        successMessage: t('one_c_web_client', 'Настройки успешно сохранены'),
-        defaultError: t('one_c_web_client', 'Ошибка сохранения настроек'),
-        generalError: t('one_c_web_client', 'Ошибка сохранения настроек: ')
+        namePlaceholder: t('one_c_web_client_v3', 'Название базы'),
+        urlPlaceholder: t('one_c_web_client_v3', 'URL базы (например, https://192.168.1.100/buh/)'),
+        removeText: t('one_c_web_client_v3', 'Удалить'),
+        errorNoDatabases: t('one_c_web_client_v3', 'Необходимо добавить хотя бы одну базу 1С'),
+        savingSettings: t('one_c_web_client_v3', 'Сохранение настроек'),
+        successMessage: t('one_c_web_client_v3', 'Настройки успешно сохранены'),
+        defaultError: t('one_c_web_client_v3', 'Ошибка сохранения настроек'),
+        generalError: t('one_c_web_client_v3', 'Ошибка сохранения настроек: ')
     };
 
     // Функция инициализации

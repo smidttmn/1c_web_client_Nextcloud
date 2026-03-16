@@ -4,9 +4,9 @@
 
     // Переводы
     const translations = {
-        unsupportedProtocol: t('one_c_web_client', 'Неподдерживаемый протокол. URL должен начинаться с http:// или https://'),
-        frameLoaded: t('one_c_web_client', 'Фрейм успешно загружен'),
-        frameError: t('one_c_web_client', 'Ошибка загрузки страницы. Пожалуйста, проверьте доступность ресурса.')
+        unsupportedProtocol: t('one_c_web_client_v3', 'Неподдерживаемый протокол. URL должен начинаться с http:// или https://'),
+        frameLoaded: t('one_c_web_client_v3', 'Фрейм успешно загружен'),
+        frameError: t('one_c_web_client_v3', 'Ошибка загрузки страницы. Пожалуйста, проверьте доступность ресурса.')
     };
 
     // Функция инициализации
