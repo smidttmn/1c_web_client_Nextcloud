@@ -5,11 +5,20 @@
         <?php if (count($_['databases']) > 0): ?>
             <div class="database-buttons">
                 <?php foreach ($_['databases'] as $database): ?>
-                    <button class="database-button" 
-                            data-url="<?php p($database['url']); ?>"
-                            data-name="<?php p($database['name']); ?>">
-                        <?php p($database['name']); ?>
-                    </button>
+                    <div class="button-wrapper">
+                        <button class="database-button" 
+                                data-url="<?php p($database['url']); ?>"
+                                data-name="<?php p($database['name']); ?>">
+                            <?php p($database['name']); ?>
+                        </button>
+                        <a href="<?php p($database['url']); ?>" 
+                           target="_blank" 
+                           class="open-new-window"
+                           title="Открыть в новом окне"
+                           rel="noopener noreferrer">
+                            ↗
+                        </a>
+                    </div>
                 <?php endforeach; ?>
             </div>
         <?php else: ?>
@@ -21,7 +30,7 @@
         <?php endif; ?>
         
         <div class="info-message">
-            <p>💡 <strong>Совет:</strong> Нажмите на кнопку для открытия базы 1С</p>
+            <p>💡 <strong>Совет:</strong> Нажмите на кнопку для открытия базы 1С, или на ↗ для открытия в новом окне</p>
         </div>
         
         <div id="database-frame-container" style="display:none;">
@@ -78,6 +87,12 @@ h1 {
     max-width: 1400px;
 }
 
+.button-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
 .database-button {
     padding: 20px 40px;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -101,6 +116,28 @@ h1 {
 
 .database-button:active {
     transform: translateY(-1px);
+}
+
+.open-new-window {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 45px;
+    height: 45px;
+    background: rgba(255,255,255,0.2);
+    border: 2px solid rgba(255,255,255,0.3);
+    border-radius: 12px;
+    color: white;
+    font-size: 24px;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.open-new-window:hover {
+    background: rgba(255,255,255,0.3);
+    border-color: rgba(255,255,255,0.6);
+    transform: translateY(-3px);
 }
 
 .info-message {
@@ -240,6 +277,11 @@ h1 {
         align-items: stretch;
     }
     
+    .button-wrapper {
+        width: 100%;
+        justify-content: center;
+    }
+    
     .database-button {
         width: 100%;
         padding: 18px 30px;
@@ -272,10 +314,21 @@ h1 {
         margin-bottom: 25px;
     }
     
+    .button-wrapper {
+        flex-direction: column;
+        gap: 5px;
+    }
+    
     .database-button {
         padding: 15px 25px;
         font-size: 14px;
         min-width: 100%;
+    }
+    
+    .open-new-window {
+        width: 100%;
+        padding: 15px;
+        font-size: 20px;
     }
     
     .frame-header {

@@ -12,8 +12,23 @@
         console.log('one_c_web_client_v3: Initializing...');
 
         const databaseButtons = document.querySelectorAll('.database-button');
+        const frameContainer = document.getElementById('database-frame-container');
+        const frame = document.getElementById('database-frame');
+        const frameTitle = document.getElementById('frame-title');
+        const closeFrameBtn = document.getElementById('close-frame');
 
-        console.log('one_c_web_client_v3: Buttons found:', databaseButtons.length);
+        console.log('one_c_web_client_v3: Elements found:', {
+            databaseButtons: databaseButtons.length,
+            frameContainer: !!frameContainer,
+            frame: !!frame,
+            frameTitle: !!frameTitle,
+            closeFrameBtn: !!closeFrameBtn
+        });
+
+        if (!frame || !frameContainer) {
+            console.error('one_c_web_client_v3: Required elements not found');
+            return;
+        }
 
         // Обработчики для кнопок - открываем 1С напрямую в iframe
         databaseButtons.forEach(button => {
@@ -34,6 +49,24 @@
                 openDatabase(url, dbName);
             });
         });
+
+        // Закрытие фрейма - ИСПРАВЛЕНО
+        if (closeFrameBtn) {
+            closeFrameBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                console.log('one_c_web_client_v3: Closing frame');
+                
+                // Скрываем контейнер
+                frameContainer.style.display = 'none';
+                
+                // Очищаем src через небольшую задержку
+                setTimeout(() => {
+                    frame.src = 'about:blank';
+                }, 100);
+            });
+        } else {
+            console.error('one_c_web_client_v3: Close button not found');
+        }
     }
 
     // Функция открытия базы
