@@ -1,15 +1,16 @@
 #!/bin/bash
 # ============================================================================
 # one_c_web_client_v3 - ИНТЕРАКТИВНЫЙ УСТАНОВЩИК С АВТО-НАСТРОЙКОЙ
-# Версия: 9.0.0 - ПОЛНАЯ АВТОМАТИЗАЦИЯ
+# Версия: 10.0.0 - УНИВЕРСАЛЬНАЯ НАСТРОЙКА ПРОКСИ (SSL + NON_SSL)
 # ============================================================================
-# 
+#
 # ВАЖНО: Этот скрипт:
 # - Автоматически проверяет ВСЕ зависимости
-# - Сам настраивает Apache ПРАВИЛЬНО
+# - Сам настраивает Apache ПРАВИЛЬНО (SSL или без SSL)
 # - НЕ ломает существующие настройки
 # - Создаёт резервные копии
 # - Проверяет каждый шаг
+# - ГЛАВНОЕ: ProxyPass ДО всех исключений!
 # ============================================================================
 
 set -o pipefail
@@ -106,22 +107,24 @@ find_nextcloud() {
 # ============================================================================
 find_apache_config() {
     print_step "3" "Поиск конфига Apache"
-    
-    local config_paths=(
-        "/etc/apache2/sites-available/nextcloud.conf"
-        "/etc/apache2/sites-available/nextcloud-le-ssl.conf"
-        "/etc/apache2/sites-enabled/nextcloud.conf"
-        "/etc/apache2/sites-enabled/000-default-le-ssl.conf"
-    )
-    
-    for config in "${config_paths[@]}"; do
-        if [ -f "$config" ] && grep -q "VirtualHost.*:443" "$config" 2>/dev/null; then
-            APACHE_CONFIG="$config"
-            print_success "Конфиг Apache найден: $APACHE_CONFIG"
-            return 0
-        fi
-    done
-    
+
+    local ssl_config="/etc/apache2/sites-available/nextcloud-le-ssl.conf"
+    local non_ssl_config="/etc/apache2/sites-available/nextcloud.conf"
+
+    # Проверяем SSL конфигурацию
+    if [ -f "$ssl_config" ] && grep -q "VirtualHost.*:443" "$ssl_config" 2>/dev/null; then
+        APACHE_CONFIG="$ssl_config"
+        print_success "Конфиг Apache найден: $APACHE_CONFIG (SSL)"
+        return 0
+    fi
+
+    # Проверяем конфигурацию без SSL
+    if [ -f "$non_ssl_config" ] && grep -q "VirtualHost" "$non_ssl_config" 2>/dev/null; then
+        APACHE_CONFIG="$non_ssl_config"
+        print_success "Конфиг Apache найден: $APACHE_CONFIG (NON_SSL)"
+        return 0
+    fi
+
     print_error "Конфиг Apache не найден!"
     exit 1
 }
@@ -284,114 +287,177 @@ add_1c_servers() {
 }
 
 # ============================================================================
-# Автоматическая настройка Apache прокси
+# Универсальная настройка Apache прокси (SSL + без SSL)
 # ============================================================================
-configure_apache_auto() {
+configure_apache_universal() {
     if [ ${#ONE_C_SERVERS[@]} -eq 0 ]; then
         print_warning "Серверы 1С не добавлены, настройка прокси пропущена"
         return 0
     fi
-    
+
     print_step "7" "Автоматическая настройка Apache прокси"
-    
+
     # Создаём резервную копию
     BACKUP_DIR="/tmp/one_c_backup_$(date +%Y%m%d_%H%M%S)"
     mkdir -p "$BACKUP_DIR"
-    cp "$APACHE_CONFIG" "$BACKUP_DIR/apache_config.backup"
-    print_success "Резервная копия создана: $BACKUP_DIR/apache_config.backup"
-    
+
+    # Определяем тип конфигурации (SSL или без SSL)
+    local ssl_config="/etc/apache2/sites-available/nextcloud-le-ssl.conf"
+    local non_ssl_config="/etc/apache2/sites-available/nextcloud.conf"
+    local active_config=""
+    local config_type=""
+
+    # Проверяем наличие SSL конфигурации
+    if [ -f "$ssl_config" ] && grep -q "VirtualHost.*:443" "$ssl_config" 2>/dev/null; then
+        active_config="$ssl_config"
+        config_type="SSL"
+        cp "$ssl_config" "$BACKUP_DIR/apache_ssl_config.backup"
+        print_success "Обнаружена SSL конфигурация (порт 443)"
+    elif [ -f "$non_ssl_config" ] && grep -q "VirtualHost" "$non_ssl_config" 2>/dev/null; then
+        active_config="$non_ssl_config"
+        config_type="NON_SSL"
+        cp "$non_ssl_config" "$BACKUP_DIR/apache_config.backup"
+        print_success "Обнаружена конфигурация без SSL (порт 80)"
+    else
+        print_error "Не найдена конфигурация Apache!"
+        return 1
+    fi
+
+    print_info "Активная конфигурация: $active_config ($config_type)"
+
     # Проверяем, есть ли уже наши настройки
-    if grep -q "one_c_web_client_v3 - Прокси" "$APACHE_CONFIG" 2>/dev/null; then
+    if grep -q "one_c_web_client_v3 - Прокси" "$active_config" 2>/dev/null; then
         print_warning "Настройки прокси уже найдены"
         read -p "Пересоздать настройки прокси? [y/N]: " answer
         if [[ "$answer" =~ ^[Yy]$ ]]; then
-            sed -i '/# one_c_web_client_v3 - Прокси/,/# END one_c_web_client_v3/d' "$APACHE_CONFIG"
+            sed -i '/# one_c_web_client_v3 - Прокси/,/# END one_c_web_client_v3/d' "$active_config"
             print_success "Старые настройки удалены"
         else
             print_info "Настройка прокси пропущена"
             return 0
         fi
     fi
-    
-    # Находим строку с Include /etc/letsencrypt/options-ssl-apache.conf
-    local include_line=$(grep -n "Include.*/etc/letsencrypt/options-ssl-apache.conf" "$APACHE_CONFIG" | head -1 | cut -d: -f1)
-    
-    if [ -z "$include_line" ]; then
-        print_error "Не найдено Include options-ssl-apache.conf"
-        return 0
+
+    # Определяем точку вставки в зависимости от типа конфигурации
+    local insert_line=""
+    if [ "$config_type" = "SSL" ]; then
+        # Для SSL: после Include options-ssl-apache.conf
+        insert_line=$(grep -n "Include.*/etc/letsencrypt/options-ssl-apache.conf" "$active_config" | head -1 | cut -d: -f1)
+        if [ -z "$insert_line" ]; then
+            # Альтернатива: после SSLCertificateKeyFile
+            insert_line=$(grep -n "SSLCertificateKeyFile" "$active_config" | head -1 | cut -d: -f1)
+        fi
+    else
+        # Для NON_SSL: после DocumentRoot или RewriteEngine
+        insert_line=$(grep -n "DocumentRoot" "$active_config" | head -1 | cut -d: -f1)
+        if [ -z "$insert_line" ]; then
+            insert_line=$(grep -n "RewriteEngine" "$active_config" | head -1 | cut -d: -f1)
+        fi
     fi
-    
+
+    if [ -z "$insert_line" ]; then
+        print_error "Не найдена точка вставки конфигурации!"
+        return 1
+    fi
+
+    # Извлекаем хост из URL первого сервера
+    local first_server="${ONE_C_SERVERS[0]}"
+    local server_host=$(echo "$first_server" | sed 's|https\?://||' | sed 's|/.*||')
+
     # Создаём файл с директивами
     local directives_file=$(mktemp)
     cat > "$directives_file" << EOF
 
-    # ==================================================================
+    # ===================================================================
     # one_c_web_client_v3 - Прокси для 1С (добавлено установщиком v$APP_VERSION)
-    # РАБОЧАЯ КОНФИГУРАЦИЯ
-    # ==================================================================
-    
+    # ПРАВИЛЬНАЯ КОНФИГУРАЦИЯ: ProxyPass ДО всех исключений!
+    # ===================================================================
+
+EOF
+
+    # Добавляем SSL настройки только для SSL конфигурации
+    if [ "$config_type" = "SSL" ]; then
+        cat >> "$directives_file" << EOF
     # SSL Proxy Settings
     SSLProxyEngine on
     SSLProxyVerify none
     SSLProxyCheckPeerCN off
     SSLProxyCheckPeerName off
 
-    # Прокси для one_c_web_client_v3 (ОБЯЗАТЕЛЬНО ДО ИСКЛЮЧЕНИЙ!)
-    ProxyPass /one_c_web_client_v3 https://${ONE_C_SERVERS[0]}/ retry=0 timeout=60
-    ProxyPassReverse /one_c_web_client_v3 https://${ONE_C_SERVERS[0]}/
-    
-    # Прокси для всех путей one_c_web_client_v3
-    ProxyPassMatch ^/one_c_web_client_v3/(.*)$ https://${ONE_C_SERVERS[0]}/\$1
+EOF
+    fi
+
+    # 1. ProxyPass для one_c_web_client_v3 (ОБЯЗАТЕЛЬНО ДО ИСКЛЮЧЕНИЙ!)
+    cat >> "$directives_file" << EOF
+    # 1. Прокси для one_c_web_client_v3 (ОБЯЗАТЕЛЬНО ДО ИСКЛЮЧЕНИЙ!)
+    ProxyPass /one_c_web_client_v3 ${first_server}/ retry=0 timeout=60
+    ProxyPassReverse /one_c_web_client_v3 ${first_server}/
+
+    # 2. ProxyPassMatch для всех путей
+    ProxyPassMatch ^/one_c_web_client_v3/(.*)$ ${first_server}/\$1
 
 EOF
 
-    # Добавляем ProxyPass для каждого сервера 1С
+    # 3. Прокси для путей 1С (sgtbuh, zupnew и т.д.)
     for i in "${!ONE_C_SERVERS[@]}"; do
         local base_path="${ONE_C_PATHS[$i]}"
         # Убираем слэш на конце для ProxyPass
         base_path="${base_path%/}"
-        
+        local server_url="${ONE_C_SERVERS[$i]}"
+
         cat >> "$directives_file" << EOF
-    
-    # Прокси для путей 1С (запросы от JavaScript): ${base_path}
-    ProxyPass ${base_path} https://${ONE_C_SERVERS[$i]}${base_path}
-    ProxyPassReverse ${base_path} https://${ONE_C_SERVERS[$i]}${base_path}
+    # Прокси для путей 1С: ${base_path}
+    ProxyPass ${base_path} ${server_url}${base_path}
+    ProxyPassReverse ${base_path} ${server_url}${base_path}
 
 EOF
     done
-    
-    # Добавляем переписывание куки и URL
+
+    # 4. ИСКЛЮЧЕНИЯ для статических файлов Nextcloud
     cat >> "$directives_file" << EOF
-    # Переписывание куки
-    ProxyPassReverseCookieDomain ${ONE_C_SERVERS[0]} $(hostname -f)
+    # 4. ИСКЛЮЧЕНИЯ для статических файлов Nextcloud
+    ProxyPass /core !
+    ProxyPass /apps !
+    ProxyPass /dist !
+    ProxyPass /js !
+    ProxyPass /css !
+    ProxyPass /l10n !
+    ProxyPass /index.php !
+    ProxyPass /loleaflet !
+    ProxyPass /browser !
+    ProxyPass /hosting !
+    ProxyPass /cool !
+
+    # 5. Переписывание куки
+    ProxyPassReverseCookieDomain ${server_host} $(hostname -f 2>/dev/null || hostname)
     ProxyPassReverseCookiePath / /
-    
-    # Переписывание URL в HTML ответе от 1С (mod_substitute)
+
+    # 6. mod_substitute для переписывания URL в HTML ответе от 1С
     AddOutputFilterByType SUBSTITUTE text/html
-    Substitute "s|href=\"/|href=\"/one_c_web_client_v3/|gin"
-    Substitute "s|src=\"/|src=\"/one_c_web_client_v3/|gin"
-    
-    # Разрешение фреймов и CSP
+    Substitute "s|href=\"/|href=\"/one_c_web_client_v3/|in"
+    Substitute "s|src=\"/|src=\"/one_c_web_client_v3/|in"
+
+    # 7. Разрешение фреймов и CSP
     Header unset X-Frame-Options
     Header always set Content-Security-Policy "frame-ancestors 'self'; frame-src *; connect-src *; script-src 'self' 'unsafe-inline' 'unsafe-eval' *; style-src 'self' 'unsafe-inline' *;"
-    
-    # ==================================================================
+
+    # ===================================================================
     # END one_c_web_client_v3
-    # ==================================================================
+    # ===================================================================
 
 EOF
 
-    # Вставляем директивы ПОСЛЕ строки с Include
-    sed -i "${include_line}r $directives_file" "$APACHE_CONFIG"
+    # Вставляем директивы ПОСЛЕ найденной строки
+    sed -i "${insert_line}r $directives_file" "$active_config"
     rm "$directives_file"
-    
+
+    print_success "Настройки прокси добавлены в $config_type конфигурацию"
+
     # Отключаем AllowOverride чтобы .htaccess не блокировал прокси
     print_info "Отключение AllowOverride для работы прокси..."
-    sed -i 's/AllowOverride All/AllowOverride None/g' "$APACHE_CONFIG"
+    sed -i 's/AllowOverride All/AllowOverride None/g' "$active_config"
     print_success "AllowOverride отключён"
-    
-    print_success "Настройки прокси добавлены для ${#ONE_C_SERVERS[@]} серверов"
-    
+
     # Проверка синтаксиса
     print_info "Проверка синтаксиса Apache..."
     if apache2ctl configtest 2>&1 | grep -q "Syntax OK"; then
@@ -400,10 +466,14 @@ EOF
         print_error "Ошибка синтаксиса Apache!"
         apache2ctl configtest 2>&1 | head -10
         print_info "Восстановление резервной копии..."
-        cp "$BACKUP_DIR/apache_config.backup" "$APACHE_CONFIG"
+        if [ "$config_type" = "SSL" ]; then
+            cp "$BACKUP_DIR/apache_ssl_config.backup" "$ssl_config"
+        else
+            cp "$BACKUP_DIR/apache_config.backup" "$non_ssl_config"
+        fi
         return 1
     fi
-    
+
     # Перезапуск Apache
     print_info "Перезапуск Apache..."
     if systemctl restart apache2; then
@@ -412,6 +482,8 @@ EOF
         print_error "Не удалось перезапустить Apache"
         return 1
     fi
+
+    print_success "Прокси настроен для ${#ONE_C_SERVERS[@]} серверов 1С"
 }
 
 # ============================================================================
@@ -495,7 +567,7 @@ final_report() {
 # ============================================================================
 main() {
     print_header
-    
+
     echo "Этот скрипт:"
     echo "  1. Проверит права и зависимости"
     echo "  2. Найдёт Nextcloud и Apache конфиг (АВТОМАТИЧЕСКИ)"
@@ -503,11 +575,14 @@ main() {
     echo "  4. Установит приложение"
     echo "  5. Интерактивно добавит серверы 1С"
     echo "  6. Автоматически настроит Apache прокси:"
-    echo "     - ProxyPass ПЕРЕД исключениями"
+    echo "     - ОПРЕДЕЛИТ тип конфигурации (SSL или NON_SSL)"
+    echo "     - ProxyPass ДО всех исключений (ПРАВИЛЬНО!)"
     echo "     - ProxyPassMatch для всех путей"
     echo "     - mod_substitute для переписывания URL"
     echo "     - AllowOverride None для работы прокси"
     echo "  7. Проверит работу после установки"
+    echo ""
+    echo "🎯 РЕЗУЛЬТАТ: 1С работает сразу после установки!"
     echo ""
     
     read -p "Продолжить установку? [Y/n]: " confirm
@@ -536,10 +611,10 @@ main() {
     
     add_1c_servers
     echo ""
-    
-    configure_apache_auto
+
+    configure_apache_universal
     echo ""
-    
+
     verify_installation
     echo ""
     
