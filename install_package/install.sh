@@ -1,7 +1,7 @@
 #!/bin/bash
 # ============================================================================
 # one_c_web_client_v3 - Универсальный интерактивный установщик
-# Версия: 7.0.0 - С интерактивным добавлением серверов 1С
+# Версия: 8.0.0 - ФИНАЛЬНАЯ ВЕРСИЯ (исправлен прокси)
 # ============================================================================
 # 
 # ВАЖНО: Этот скрипт НЕ ломает существующие настройки:
@@ -13,7 +13,7 @@
 # - Копирует файлы приложения
 # - Устанавливает приложение через occ
 # - Интерактивно добавляет серверы 1С
-# - Настраивает ProxyPass для каждого сервера
+# - Настраивает ProxyPass ПЕРЕД всеми исключениями
 # ============================================================================
 
 set -o pipefail
@@ -24,7 +24,7 @@ set -o pipefail
 NEXTCLOUD_PATH=""
 APACHE_CONFIG=""
 APP_NAME="one_c_web_client_v3"
-APP_VERSION="7.0.0"
+APP_VERSION="8.0.0"
 BACKUP_DIR=""
 declare -a ONE_C_SERVERS=()
 
@@ -47,7 +47,7 @@ print_header() {
     echo -e "${BLUE}"
     echo "╔═══════════════════════════════════════════════════════════╗"
     echo "║   one_c_web_client_v3 - Интерактивный установщик         ║"
-    echo "║   Версия $APP_VERSION - С добавлением серверов 1С        ║"
+    echo "║   Версия $APP_VERSION - ФИНАЛЬНАЯ ВЕРСИЯ                 ║"
     echo "╚═══════════════════════════════════════════════════════════╝"
     echo -e "${NC}"
 }
@@ -116,7 +116,7 @@ find_apache_config() {
     )
     
     for config in "${config_paths[@]}"; do
-        if [ -f "$config" ] && grep -q "VirtualHost.*:443" "$config" 2>/dev/null; then
+        if [ -f "$config" ] && grep -q "VirtualHost" "$config" 2>/dev/null; then
             APACHE_CONFIG="$config"
             print_success "Конфиг Apache найден: $APACHE_CONFIG"
             return 0
@@ -223,9 +223,6 @@ add_1c_servers() {
     read -p "Добавить сервер 1С сейчас? [Y/n]: " add_now
     if [[ "$add_now" =~ ^[Nn]$ ]]; then
         print_info "Настройка прокси пропущена"
-        print_info "Для добавления серверов позже выполните:"
-        echo "   sudo nano $APACHE_CONFIG"
-        echo "   # Добавьте ProxyPass для каждого сервера 1С"
         return 0
     fi
     
@@ -256,9 +253,12 @@ add_1c_servers() {
             continue
         fi
         
+        # Извлекаем базовый URL (без пути)
+        local base_url=$(echo "$one_c_url" | sed 's|/\([^/]*\)$||')
+        
         # Сохраняем сервер
-        ONE_C_SERVERS+=("$one_c_url")
-        print_success "Сервер добавлен: $db_name → $one_c_url"
+        ONE_C_SERVERS+=("$base_url")
+        print_success "Сервер добавлен: $db_name → $base_url"
         
         echo ""
         read -p "Добавить ещё один сервер 1С? [y/N]: " add_more
@@ -275,7 +275,7 @@ add_1c_servers() {
 }
 
 # ============================================================================
-# Настройка Apache прокси (НЕ ЛОМАЕТ SSL!)
+# Настройка Apache прокси (ПРАВИЛЬНО - ПЕРЕД исключениями!)
 # ============================================================================
 configure_apache_proxy() {
     if [ ${#ONE_C_SERVERS[@]} -eq 0 ]; then
@@ -285,7 +285,7 @@ configure_apache_proxy() {
     
     print_step "6" "Настройка Apache прокси"
     
-    # Создаём резервную копию (НЕ ТРОГАЕМ SSL!)
+    # Создаём резервную копию
     BACKUP_DIR="/tmp/one_c_backup_$(date +%Y%m%d_%H%M%S)"
     mkdir -p "$BACKUP_DIR"
     cp "$APACHE_CONFIG" "$BACKUP_DIR/apache_config.backup"
@@ -304,53 +304,37 @@ configure_apache_proxy() {
         fi
     fi
     
-    # Находим </VirtualHost>
-    local vhost_line=$(grep -n "</VirtualHost>" "$APACHE_CONFIG" | head -1 | cut -d: -f1)
+    # Находим строку с DocumentRoot
+    local docroot_line=$(grep -n "DocumentRoot" "$APACHE_CONFIG" | head -1 | cut -d: -f1)
     
-    if [ -z "$vhost_line" ]; then
-        print_error "Не найден закрывающий тег </VirtualHost>"
+    if [ -z "$docroot_line" ]; then
+        print_error "Не найден DocumentRoot"
         return 0
     fi
     
     # Создаём файл с директивами
     local directives_file=$(mktemp)
-    cat > "$directives_file" << 'EOF'
+    cat > "$directives_file" << EOF
 
     # ===================================================================
-    # one_c_web_client_v3 - Прокси для 1С (добавлено установщиком)
-    # ВАЖНО: Эти настройки НЕ ломают SSL конфигурацию!
+    # one_c_web_client_v3 - Прокси для 1С (добавлено установщиком v$APP_VERSION)
+    # ВАЖНО: Эти настройки ДО всех ProxyPass с !
     # ===================================================================
 
-    # SSL Proxy Settings (НЕ ИЗМЕНЯТЬ если уже настроено!)
+    # SSL Proxy Settings
     SSLProxyEngine on
     SSLProxyVerify none
     SSLProxyCheckPeerCN off
     SSLProxyCheckPeerName off
 
-    # Исключения для статических файлов Nextcloud
-    ProxyPass /core !
-    ProxyPass /apps !
-    ProxyPass /dist !
-    ProxyPass /js !
-    ProxyPass /css !
-    ProxyPass /l10n !
-    ProxyPass /index.php !
-    ProxyPass /loleaflet !
-    ProxyPass /browser !
-    ProxyPass /hosting !
-    ProxyPass /cool !
-
 EOF
 
     # Добавляем ProxyPass для каждого сервера
     for server in "${ONE_C_SERVERS[@]}"; do
-        # Извлекаем базовый URL (без пути)
-        local base_url=$(echo "$server" | sed 's|/\([^/]*\)$||')
-        
         cat >> "$directives_file" << EOF
-    # Прокси для 1С: $base_url
-    ProxyPass /one_c_web_client_v3 $base_url/one_c_web_client_v3 retry=0 timeout=60
-    ProxyPassReverse /one_c_web_client_v3 $base_url/one_c_web_client_v3
+    # Прокси для 1С: $server
+    ProxyPass /one_c_web_client_v3 $server/one_c_web_client_v3 retry=0 timeout=60
+    ProxyPassReverse /one_c_web_client_v3 $server/one_c_web_client_v3
     ProxyPassReverseCookiePath / /
 
 EOF
@@ -368,9 +352,9 @@ EOF
 
 EOF
 
-    # Вставляем директивы перед </VirtualHost>
-    local line_before=$((vhost_line - 1))
-    sed -i "${line_before}r $directives_file" "$APACHE_CONFIG"
+    # Вставляем директивы ПОСЛЕ DocumentRoot
+    local line_after=$((docroot_line + 1))
+    sed -i "${line_after}r $directives_file" "$APACHE_CONFIG"
     rm "$directives_file"
     
     print_success "Настройки прокси добавлены для ${#ONE_C_SERVERS[@]} серверов"
@@ -446,18 +430,6 @@ final_report() {
     else
         echo "⚠️  Прокси НЕ настроен!"
         echo ""
-        echo "Для добавления серверов 1С выполните:"
-        echo "  1. Откройте конфиг: sudo nano $APACHE_CONFIG"
-        echo "  2. Добавьте перед </VirtualHost>:"
-        echo ""
-        echo "    # Прокси для 1С"
-        echo "    SSLProxyEngine on"
-        echo "    ProxyPass /one_c_web_client_v3 https://YOUR_1C_SERVER/one_c_web_client_v3"
-        echo "    ProxyPassReverse /one_c_web_client_v3 https://YOUR_1C_SERVER/one_c_web_client_v3"
-        echo ""
-        echo "  3. Проверьте: sudo apache2ctl configtest"
-        echo "  4. Перезапустите: sudo systemctl restart apache2"
-        echo ""
     fi
     
     echo "📋 Следующие шаги:"
@@ -465,10 +437,12 @@ final_report() {
     echo "1. Откройте админ-панель Nextcloud:"
     echo "   https://your-nextcloud-domain/index.php/settings/admin/$APP_NAME"
     echo ""
-    echo "2. Добавьте базы 1С через интерфейс"
+    echo "2. Добавьте базы 1С через интерфейс (если не добавили при установке)"
     echo ""
     echo "3. Проверьте работу приложения:"
     echo "   https://your-nextcloud-domain/index.php/apps/$APP_NAME/"
+    echo ""
+    echo "4. Очистите кэш браузера: Ctrl+Shift+R"
     echo ""
     
     print_success "Установка завершена!"
@@ -486,7 +460,7 @@ main() {
     echo "  3. Проверит модули Apache"
     echo "  4. Установит приложение"
     echo "  5. Интерактивно добавит серверы 1С"
-    echo "  6. Настроит ProxyPass (НЕ ЛОМАЯ SSL!)"
+    echo "  6. Настроит ProxyPass (ПЕРЕД исключениями!)"
     echo "  7. Проверит работу после установки"
     echo ""
     
