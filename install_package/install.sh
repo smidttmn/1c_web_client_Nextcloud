@@ -1,21 +1,15 @@
 #!/bin/bash
 # ============================================================================
-# one_c_web_client_v3 - Универсальный интерактивный установщик
-# Версия: 8.0.1 - ФИНАЛЬНАЯ ВЕРСИЯ (РАБОЧАЯ КОНФИГУРАЦИЯ)
+# one_c_web_client_v3 - ИНТЕРАКТИВНЫЙ УСТАНОВЩИК С АВТО-НАСТРОЙКОЙ
+# Версия: 9.0.0 - ПОЛНАЯ АВТОМАТИЗАЦИЯ
 # ============================================================================
 # 
-# ВАЖНО: Этот скрипт НЕ ломает существующие настройки:
-# - SSL сертификаты НЕ трогаются
-# - Существующие настройки Apache СОХРАНЯЮТСЯ
-# - Конфигурация Nextcloud НЕ изменяется
-#
-# Скрипт:
-# - Копирует файлы приложения
-# - Устанавливает приложение через occ
-# - Интерактивно добавляет серверы 1С
-# - Настраивает ProxyPass ПЕРЕД всеми исключениями
-# - Добавляет mod_substitute для переписывания URL
-# - Отключает AllowOverride для работы прокси
+# ВАЖНО: Этот скрипт:
+# - Автоматически проверяет ВСЕ зависимости
+# - Сам настраивает Apache ПРАВИЛЬНО
+# - НЕ ломает существующие настройки
+# - Создаёт резервные копии
+# - Проверяет каждый шаг
 # ============================================================================
 
 set -o pipefail
@@ -26,7 +20,7 @@ set -o pipefail
 NEXTCLOUD_PATH=""
 APACHE_CONFIG=""
 APP_NAME="one_c_web_client_v3"
-APP_VERSION="8.0.1"
+APP_VERSION="9.0.0"
 BACKUP_DIR=""
 declare -a ONE_C_SERVERS=()
 declare -a ONE_C_PATHS=()
@@ -49,8 +43,8 @@ exec > >(tee -a "$LOG_FILE") 2>&1
 print_header() {
     echo -e "${BLUE}"
     echo "╔═══════════════════════════════════════════════════════════╗"
-    echo "║   one_c_web_client_v3 - Интерактивный установщик         ║"
-    echo "║   Версия $APP_VERSION - РАБОЧАЯ КОНФИГУРАЦИЯ             ║"
+    echo "║   one_c_web_client_v3 - ИНТЕРАКТИВНЫЙ УСТАНОВЩИК         ║"
+    echo "║   Версия $APP_VERSION - ПОЛНАЯ АВТОМАТИЗАЦИЯ             ║"
     echo "╚═══════════════════════════════════════════════════════════╝"
     echo -e "${NC}"
 }
@@ -65,6 +59,8 @@ print_warning() { echo -e "${YELLOW}  ⚠ $1${NC}"; }
 # Проверка прав
 # ============================================================================
 check_root() {
+    print_step "1" "Проверка прав доступа"
+    
     if [ "$EUID" -ne 0 ]; then
         print_error "Запустите скрипт от root (sudo ./install.sh)"
         exit 1
@@ -76,7 +72,7 @@ check_root() {
 # Поиск Nextcloud
 # ============================================================================
 find_nextcloud() {
-    print_step "1" "Поиск Nextcloud"
+    print_step "2" "Поиск Nextcloud"
     
     local nc_paths=(
         "/var/www/html/nextcloud"
@@ -109,7 +105,7 @@ find_nextcloud() {
 # Поиск конфига Apache
 # ============================================================================
 find_apache_config() {
-    print_step "2" "Поиск конфига Apache"
+    print_step "3" "Поиск конфига Apache"
     
     local config_paths=(
         "/etc/apache2/sites-available/nextcloud.conf"
@@ -119,7 +115,7 @@ find_apache_config() {
     )
     
     for config in "${config_paths[@]}"; do
-        if [ -f "$config" ] && grep -q "VirtualHost" "$config" 2>/dev/null; then
+        if [ -f "$config" ] && grep -q "VirtualHost.*:443" "$config" 2>/dev/null; then
             APACHE_CONFIG="$config"
             print_success "Конфиг Apache найден: $APACHE_CONFIG"
             return 0
@@ -134,7 +130,7 @@ find_apache_config() {
 # Проверка модулей Apache
 # ============================================================================
 check_apache_modules() {
-    print_step "3" "Проверка модулей Apache"
+    print_step "4" "Проверка модулей Apache"
     
     local required_modules=("proxy" "proxy_http" "headers" "rewrite" "ssl" "substitute")
     local missing_modules=()
@@ -151,8 +147,13 @@ check_apache_modules() {
     if [ ${#missing_modules[@]} -gt 0 ]; then
         print_info "Включение отсутствующих модулей..."
         for module in "${missing_modules[@]}"; do
-            a2enmod "$module" 2>/dev/null && print_success "Модуль $module включён"
+            if a2enmod "$module" 2>/dev/null; then
+                print_success "Модуль $module включён"
+            else
+                print_error "Не удалось включить модуль $module"
+            fi
         done
+        print_info "Перезапустите Apache после установки модулей"
     fi
 }
 
@@ -160,7 +161,7 @@ check_apache_modules() {
 # Установка приложения
 # ============================================================================
 install_app() {
-    print_step "4" "Установка приложения"
+    print_step "5" "Установка приложения"
     
     local app_archive="$(dirname "$0")/app/one_c_web_client_v3.tar.gz"
     local app_dest="$NEXTCLOUD_PATH/apps/$APP_NAME"
@@ -212,7 +213,7 @@ install_app() {
 # Интерактивное добавление серверов 1С
 # ============================================================================
 add_1c_servers() {
-    print_step "5" "Добавление серверов 1С"
+    print_step "6" "Добавление серверов 1С"
     
     echo ""
     print_info "═══════════════════════════════════════════════════════════"
@@ -283,15 +284,15 @@ add_1c_servers() {
 }
 
 # ============================================================================
-# Настройка Apache прокси (РАБОЧАЯ КОНФИГУРАЦИЯ)
+# Автоматическая настройка Apache прокси
 # ============================================================================
-configure_apache_proxy() {
+configure_apache_auto() {
     if [ ${#ONE_C_SERVERS[@]} -eq 0 ]; then
         print_warning "Серверы 1С не добавлены, настройка прокси пропущена"
         return 0
     fi
     
-    print_step "6" "Настройка Apache прокси"
+    print_step "7" "Автоматическая настройка Apache прокси"
     
     # Создаём резервную копию
     BACKUP_DIR="/tmp/one_c_backup_$(date +%Y%m%d_%H%M%S)"
@@ -335,7 +336,7 @@ configure_apache_proxy() {
     SSLProxyCheckPeerCN off
     SSLProxyCheckPeerName off
 
-    # Прокси для one_c_web_client_v3
+    # Прокси для one_c_web_client_v3 (ОБЯЗАТЕЛЬНО ДО ИСКЛЮЧЕНИЙ!)
     ProxyPass /one_c_web_client_v3 https://${ONE_C_SERVERS[0]}/ retry=0 timeout=60
     ProxyPassReverse /one_c_web_client_v3 https://${ONE_C_SERVERS[0]}/
     
@@ -367,8 +368,8 @@ EOF
     
     # Переписывание URL в HTML ответе от 1С (mod_substitute)
     AddOutputFilterByType SUBSTITUTE text/html
-    Substitute "s|href=\"/|href=\"/one_c_web_client_v3/|in"
-    Substitute "s|src=\"/|src=\"/one_c_web_client_v3/|in"
+    Substitute "s|href=\"/|href=\"/one_c_web_client_v3/|gin"
+    Substitute "s|src=\"/|src=\"/one_c_web_client_v3/|gin"
     
     # Разрешение фреймов и CSP
     Header unset X-Frame-Options
@@ -417,7 +418,7 @@ EOF
 # Проверка установки
 # ============================================================================
 verify_installation() {
-    print_step "7" "Проверка установки"
+    print_step "8" "Проверка установки"
     
     # Проверка приложения
     if sudo -u www-data php "$NEXTCLOUD_PATH/occ" app:list 2>/dev/null | grep -q "$APP_NAME"; then
@@ -432,6 +433,15 @@ verify_installation() {
             print_success "Конфигурация Apache корректна"
         else
             print_error "Ошибка в конфигурации Apache"
+        fi
+    fi
+    
+    # Проверка прокси
+    if [ ${#ONE_C_SERVERS[@]} -gt 0 ]; then
+        if grep -q "ProxyPass /one_c_web_client_v3" "$APACHE_CONFIG"; then
+            print_success "ProxyPass настроен"
+        else
+            print_warning "ProxyPass не найден"
         fi
     fi
 }
@@ -488,14 +498,16 @@ main() {
     
     echo "Этот скрипт:"
     echo "  1. Проверит права и зависимости"
-    echo "  2. Найдёт Nextcloud и Apache конфиг"
+    echo "  2. Найдёт Nextcloud и Apache конфиг (АВТОМАТИЧЕСКИ)"
     echo "  3. Проверит модули Apache"
     echo "  4. Установит приложение"
     echo "  5. Интерактивно добавит серверы 1С"
-    echo "  6. Настроит ProxyPass (РАБОЧАЯ КОНФИГУРАЦИЯ)"
-    echo "  7. Добавит mod_substitute для переписывания URL"
-    echo "  8. Отключит AllowOverride для работы прокси"
-    echo "  9. Проверит работу после установки"
+    echo "  6. Автоматически настроит Apache прокси:"
+    echo "     - ProxyPass ПЕРЕД исключениями"
+    echo "     - ProxyPassMatch для всех путей"
+    echo "     - mod_substitute для переписывания URL"
+    echo "     - AllowOverride None для работы прокси"
+    echo "  7. Проверит работу после установки"
     echo ""
     
     read -p "Продолжить установку? [Y/n]: " confirm
@@ -525,7 +537,7 @@ main() {
     add_1c_servers
     echo ""
     
-    configure_apache_proxy
+    configure_apache_auto
     echo ""
     
     verify_installation
