@@ -34,21 +34,21 @@ class AdminSettings implements ISettings {
 	}
 
 	public function getForm(): TemplateResponse {
-		$dbs = $this->config->getAppValue('one_c_web_client', 'databases', '[]');
+		$dbs = $this->config->getAppValue('one_c_web_client_v3', 'databases', '[]');
 		$databases = json_decode($dbs, true) ?: [];
 
 		// Добавляем JavaScript с правильным nonce через Util
-		Util::addScript('one_c_web_client', 'admin_settings');
+		Util::addScript('one_c_web_client_v3', 'admin_settings');
 
 		$params = [
 			'databases' => $databases
 		];
 
-		return new TemplateResponse('one_c_web_client', 'admin_settings', $params);
+		return new TemplateResponse('one_c_web_client_v3', 'admin_settings', $params);
 	}
 
 	public function getSection(): string {
-		return 'one_c_web_client';
+		return 'one_c_web_client_v3';
 	}
 
 	public function getPriority(): int {

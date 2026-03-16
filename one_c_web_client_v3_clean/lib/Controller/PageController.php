@@ -53,7 +53,7 @@ class PageController extends Controller {
 	 * @NoCSRFRequired
 	 */
 	public function index(): TemplateResponse {
-		$databasesJson = $this->config->getAppValue('one_c_web_client', 'databases', '[]');
+		$databasesJson = $this->config->getAppValue('one_c_web_client_v3', 'databases', '[]');
 		$databases = json_decode($databasesJson, true) ?: [];
 
 		// Извлекаем только имя и URL для передачи в шаблон
@@ -66,14 +66,14 @@ class PageController extends Controller {
 		}
 
 		// Добавляем JavaScript
-		Util::addScript('one_c_web_client', 'index');
+		Util::addScript('one_c_web_client_v3', 'index');
 
 		$params = [
 			'databases' => $dbList,
 			'appName' => $this->appName
 		];
 
-		$response = new TemplateResponse('one_c_web_client', 'index', $params);
+		$response = new TemplateResponse('one_c_web_client_v3', 'index', $params);
 
 		// CSP настраивается автоматически на основе сохранённых баз 1С
 		// При необходимости добавьте домены 1С вручную:

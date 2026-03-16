@@ -76,7 +76,7 @@ class ConfigController extends Controller {
 					}
 				}
 				
-				$this->config->setAppValue('one_c_web_client', 'databases', json_encode($dbArray));
+				$this->config->setAppValue('one_c_web_client_v3', 'databases', json_encode($dbArray));
 			}
 
 			return new JSONResponse(['status' => 'success']);
