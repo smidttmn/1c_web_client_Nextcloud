@@ -7,11 +7,12 @@
                 <?php foreach ($_['databases'] as $database): ?>
                     <div class="button-wrapper">
                         <button class="database-button" 
+                                data-proxy-url="<?php p($_['proxyUrl']); ?>?url=<?php echo urlencode($database['url']); ?>"
                                 data-url="<?php p($database['url']); ?>"
                                 data-name="<?php p($database['name']); ?>">
                             <?php p($database['name']); ?>
                         </button>
-                        <a href="<?php p($database['url']); ?>" 
+                        <a href="<?php p($_['proxyUrl']); ?>?url=<?php echo urlencode($database['url']); ?>" 
                            target="_blank" 
                            class="open-new-window"
                            title="Открыть в новом окне"
@@ -30,7 +31,17 @@
         <?php endif; ?>
         
         <div class="info-message">
-            <p>💡 <strong>Совет:</strong> Нажмите на кнопку для открытия базы в этом окне, или на ↗ для открытия в новом окне</p>
+            <p>💡 <strong>Совет:</strong> Нажмите на кнопку для открытия базы через прокси Nextcloud, или на ↗ для открытия в новом окне</p>
+        </div>
+        
+        <div id="database-frame-container" style="display:none;">
+            <div class="frame-header">
+                <h3 id="frame-title"></h3>
+                <button class="close-button" id="close-frame" title="Закрыть">×</button>
+            </div>
+            <iframe id="database-frame"
+                    sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation allow-downloads allow-pointer-lock allow-modals allow-popups-to-escape-sandbox">
+            </iframe>
         </div>
     </div>
 </div>
@@ -166,6 +177,55 @@ h1 {
     margin-top: 15px;
 }
 
+#database-frame-container {
+    margin-top: 30px;
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+    background: white;
+}
+
+.frame-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 25px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.frame-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.close-button {
+    background: rgba(255,255,255,0.2);
+    border: none;
+    border-radius: 50%;
+    width: 35px;
+    height: 35px;
+    font-size: 24px;
+    cursor: pointer;
+    color: white;
+    transition: background 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.close-button:hover {
+    background: rgba(255,255,255,0.3);
+}
+
+#database-frame {
+    width: 100%;
+    height: calc(100vh - 300px);
+    min-height: 600px;
+    border: none;
+}
+
 /* Адаптивность для планшетов */
 @media (max-width: 768px) {
     .one-c-container {
@@ -199,6 +259,11 @@ h1 {
     .info-message p {
         font-size: 14px;
     }
+    
+    #database-frame {
+        height: calc(100vh - 250px);
+        min-height: 500px;
+    }
 }
 
 /* Адаптивность для телефонов */
@@ -222,6 +287,25 @@ h1 {
         width: 40px;
         height: 40px;
         font-size: 20px;
+    }
+    
+    .frame-header {
+        padding: 12px 15px;
+    }
+    
+    .frame-header h3 {
+        font-size: 14px;
+    }
+    
+    .close-button {
+        width: 30px;
+        height: 30px;
+        font-size: 20px;
+    }
+    
+    #database-frame {
+        height: calc(100vh - 220px);
+        min-height: 400px;
     }
 }
 </style>

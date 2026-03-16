@@ -68,9 +68,13 @@ class PageController extends Controller {
 		// Добавляем JavaScript
 		Util::addScript('one_c_web_client_v3', 'index');
 
+		// Формируем URL прокси
+		$proxyUrl = $this->urlGenerator->linkToRoute('one_c_web_client_v3.proxy.proxy');
+
 		$params = [
 			'databases' => $dbList,
-			'appName' => $this->appName
+			'appName' => $this->appName,
+			'proxyUrl' => $proxyUrl
 		];
 
 		$response = new TemplateResponse('one_c_web_client_v3', 'index', $params);
