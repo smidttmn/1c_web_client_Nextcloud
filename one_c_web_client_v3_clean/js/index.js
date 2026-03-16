@@ -30,7 +30,7 @@
             return;
         }
 
-        // Обработчики для кнопок - открываем 1С напрямую в iframe
+        // Обработчики для кнопок
         databaseButtons.forEach(button => {
             button.addEventListener('click', function(e) {
                 e.preventDefault();
@@ -45,21 +45,25 @@
                     return;
                 }
 
-                // Открываем 1С напрямую (Apache настроит прокси автоматически)
-                openDatabase(url, dbName);
+                // Извлекаем путь из URL (например, /sgtbuh из https://10.72.1.5/sgtbuh)
+                const urlPath = new URL(url).pathname;
+                
+                // Открываем через прокси Nextcloud: /one_c_web_client_v3 + путь
+                const proxyPath = '/one_c_web_client_v3' + urlPath;
+                
+                console.log('one_c_web_client_v3: Opening via proxy:', proxyPath);
+                
+                openDatabase(proxyPath, dbName);
             });
         });
 
-        // Закрытие фрейма - ИСПРАВЛЕНО
+        // Закрытие фрейма
         if (closeFrameBtn) {
             closeFrameBtn.addEventListener('click', function(e) {
                 e.preventDefault();
                 console.log('one_c_web_client_v3: Closing frame');
                 
-                // Скрываем контейнер
                 frameContainer.style.display = 'none';
-                
-                // Очищаем src через небольшую задержку
                 setTimeout(() => {
                     frame.src = 'about:blank';
                 }, 100);
@@ -70,7 +74,7 @@
     }
 
     // Функция открытия базы
-    function openDatabase(url, dbName) {
+    function openDatabase(path, dbName) {
         const frameContainer = document.getElementById('database-frame-container');
         const frame = document.getElementById('database-frame');
         const frameTitle = document.getElementById('frame-title');
@@ -80,14 +84,12 @@
             return;
         }
 
-        console.log('one_c_web_client_v3: Opening database:', url);
+        console.log('one_c_web_client_v3: Opening database:', path);
         
-        // Сначала скрываем, потом меняем src, потом показываем
         frameContainer.style.display = 'none';
-        frame.src = url;
+        frame.src = path;
         frameTitle.textContent = dbName;
         
-        // Показываем контейнер фрейма
         setTimeout(() => {
             frameContainer.style.display = 'block';
             frameContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
