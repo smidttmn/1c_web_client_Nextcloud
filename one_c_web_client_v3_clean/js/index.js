@@ -48,8 +48,11 @@
                 // Извлекаем путь из URL (например, /sgtbuh из https://10.72.1.5/sgtbuh)
                 const urlPath = new URL(url).pathname;
                 
-                // Открываем через прокси Nextcloud: /one_c_web_client_v3 + путь
-                const proxyPath = '/one_c_web_client_v3' + urlPath;
+                // Добавляем слэш на конце если нет
+                const pathWithSlash = urlPath.endsWith('/') ? urlPath : urlPath + '/';
+                
+                // Открываем через прокси Nextcloud: /one_c_web_client_v3 + путь + слэш
+                const proxyPath = '/one_c_web_client_v3' + pathWithSlash;
                 
                 console.log('one_c_web_client_v3: Opening via proxy:', proxyPath);
                 

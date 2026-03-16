@@ -1,7 +1,7 @@
 #!/bin/bash
 # ============================================================================
 # one_c_web_client_v3 - Универсальный интерактивный установщик
-# Версия: 8.0.0 - ФИНАЛЬНАЯ ВЕРСИЯ (исправлен прокси)
+# Версия: 8.0.1 - ФИНАЛЬНАЯ ВЕРСИЯ (РАБОЧАЯ КОНФИГУРАЦИЯ)
 # ============================================================================
 # 
 # ВАЖНО: Этот скрипт НЕ ломает существующие настройки:
@@ -14,6 +14,8 @@
 # - Устанавливает приложение через occ
 # - Интерактивно добавляет серверы 1С
 # - Настраивает ProxyPass ПЕРЕД всеми исключениями
+# - Добавляет mod_substitute для переписывания URL
+# - Отключает AllowOverride для работы прокси
 # ============================================================================
 
 set -o pipefail
@@ -24,9 +26,10 @@ set -o pipefail
 NEXTCLOUD_PATH=""
 APACHE_CONFIG=""
 APP_NAME="one_c_web_client_v3"
-APP_VERSION="8.0.0"
+APP_VERSION="8.0.1"
 BACKUP_DIR=""
 declare -a ONE_C_SERVERS=()
+declare -a ONE_C_PATHS=()
 
 # Цвета
 RED='\033[0;31m'
@@ -47,7 +50,7 @@ print_header() {
     echo -e "${BLUE}"
     echo "╔═══════════════════════════════════════════════════════════╗"
     echo "║   one_c_web_client_v3 - Интерактивный установщик         ║"
-    echo "║   Версия $APP_VERSION - ФИНАЛЬНАЯ ВЕРСИЯ                 ║"
+    echo "║   Версия $APP_VERSION - РАБОЧАЯ КОНФИГУРАЦИЯ             ║"
     echo "╚═══════════════════════════════════════════════════════════╝"
     echo -e "${NC}"
 }
@@ -133,7 +136,7 @@ find_apache_config() {
 check_apache_modules() {
     print_step "3" "Проверка модулей Apache"
     
-    local required_modules=("proxy" "proxy_http" "headers" "rewrite" "ssl")
+    local required_modules=("proxy" "proxy_http" "headers" "rewrite" "ssl" "substitute")
     local missing_modules=()
     
     for module in "${required_modules[@]}"; do
@@ -253,12 +256,17 @@ add_1c_servers() {
             continue
         fi
         
-        # Извлекаем базовый URL (без пути)
+        # Извлекаем базовый URL и путь
         local base_url=$(echo "$one_c_url" | sed 's|/\([^/]*\)$||')
+        local base_path=$(echo "$one_c_url" | grep -oP '[^/]+$')
+        
+        # Добавляем слэш на конце если нет
+        [[ ! "$base_path" =~ /$ ]] && base_path="$base_path/"
         
         # Сохраняем сервер
         ONE_C_SERVERS+=("$base_url")
-        print_success "Сервер добавлен: $db_name → $base_url"
+        ONE_C_PATHS+=("$base_path")
+        print_success "Сервер добавлен: $db_name → $base_url$base_path"
         
         echo ""
         read -p "Добавить ещё один сервер 1С? [y/N]: " add_more
@@ -275,7 +283,7 @@ add_1c_servers() {
 }
 
 # ============================================================================
-# Настройка Apache прокси (ПРАВИЛЬНО - ПЕРЕД исключениями!)
+# Настройка Apache прокси (РАБОЧАЯ КОНФИГУРАЦИЯ)
 # ============================================================================
 configure_apache_proxy() {
     if [ ${#ONE_C_SERVERS[@]} -eq 0 ]; then
@@ -304,11 +312,11 @@ configure_apache_proxy() {
         fi
     fi
     
-    # Находим строку с DocumentRoot
-    local docroot_line=$(grep -n "DocumentRoot" "$APACHE_CONFIG" | head -1 | cut -d: -f1)
+    # Находим строку с Include /etc/letsencrypt/options-ssl-apache.conf
+    local include_line=$(grep -n "Include.*/etc/letsencrypt/options-ssl-apache.conf" "$APACHE_CONFIG" | head -1 | cut -d: -f1)
     
-    if [ -z "$docroot_line" ]; then
-        print_error "Не найден DocumentRoot"
+    if [ -z "$include_line" ]; then
+        print_error "Не найдено Include options-ssl-apache.conf"
         return 0
     fi
     
@@ -316,46 +324,70 @@ configure_apache_proxy() {
     local directives_file=$(mktemp)
     cat > "$directives_file" << EOF
 
-    # ===================================================================
+    # ==================================================================
     # one_c_web_client_v3 - Прокси для 1С (добавлено установщиком v$APP_VERSION)
-    # ВАЖНО: Эти настройки ДО всех ProxyPass с !
-    # ===================================================================
-
+    # РАБОЧАЯ КОНФИГУРАЦИЯ
+    # ==================================================================
+    
     # SSL Proxy Settings
     SSLProxyEngine on
     SSLProxyVerify none
     SSLProxyCheckPeerCN off
     SSLProxyCheckPeerName off
 
+    # Прокси для one_c_web_client_v3
+    ProxyPass /one_c_web_client_v3 https://${ONE_C_SERVERS[0]}/ retry=0 timeout=60
+    ProxyPassReverse /one_c_web_client_v3 https://${ONE_C_SERVERS[0]}/
+    
+    # Прокси для всех путей one_c_web_client_v3
+    ProxyPassMatch ^/one_c_web_client_v3/(.*)$ https://${ONE_C_SERVERS[0]}/\$1
+
 EOF
 
-    # Добавляем ProxyPass для каждого сервера
-    for server in "${ONE_C_SERVERS[@]}"; do
+    # Добавляем ProxyPass для каждого сервера 1С
+    for i in "${!ONE_C_SERVERS[@]}"; do
+        local base_path="${ONE_C_PATHS[$i]}"
+        # Убираем слэш на конце для ProxyPass
+        base_path="${base_path%/}"
+        
         cat >> "$directives_file" << EOF
-    # Прокси для 1С: $server
-    ProxyPass /one_c_web_client_v3 $server/one_c_web_client_v3 retry=0 timeout=60
-    ProxyPassReverse /one_c_web_client_v3 $server/one_c_web_client_v3
-    ProxyPassReverseCookiePath / /
+    
+    # Прокси для путей 1С (запросы от JavaScript): ${base_path}
+    ProxyPass ${base_path} https://${ONE_C_SERVERS[$i]}${base_path}
+    ProxyPassReverse ${base_path} https://${ONE_C_SERVERS[$i]}${base_path}
 
 EOF
     done
     
-    # Добавляем CSP
-    cat >> "$directives_file" << 'EOF'
+    # Добавляем переписывание куки и URL
+    cat >> "$directives_file" << EOF
+    # Переписывание куки
+    ProxyPassReverseCookieDomain ${ONE_C_SERVERS[0]} $(hostname -f)
+    ProxyPassReverseCookiePath / /
+    
+    # Переписывание URL в HTML ответе от 1С (mod_substitute)
+    AddOutputFilterByType SUBSTITUTE text/html
+    Substitute "s|href=\"/|href=\"/one_c_web_client_v3/|in"
+    Substitute "s|src=\"/|src=\"/one_c_web_client_v3/|in"
+    
     # Разрешение фреймов и CSP
     Header unset X-Frame-Options
     Header always set Content-Security-Policy "frame-ancestors 'self'; frame-src *; connect-src *; script-src 'self' 'unsafe-inline' 'unsafe-eval' *; style-src 'self' 'unsafe-inline' *;"
-
-    # ===================================================================
+    
+    # ==================================================================
     # END one_c_web_client_v3
-    # ===================================================================
+    # ==================================================================
 
 EOF
 
-    # Вставляем директивы ПОСЛЕ DocumentRoot
-    local line_after=$((docroot_line + 1))
-    sed -i "${line_after}r $directives_file" "$APACHE_CONFIG"
+    # Вставляем директивы ПОСЛЕ строки с Include
+    sed -i "${include_line}r $directives_file" "$APACHE_CONFIG"
     rm "$directives_file"
+    
+    # Отключаем AllowOverride чтобы .htaccess не блокировал прокси
+    print_info "Отключение AllowOverride для работы прокси..."
+    sed -i 's/AllowOverride All/AllowOverride None/g' "$APACHE_CONFIG"
+    print_success "AllowOverride отключён"
     
     print_success "Настройки прокси добавлены для ${#ONE_C_SERVERS[@]} серверов"
     
@@ -423,8 +455,8 @@ final_report() {
     
     if [ ${#ONE_C_SERVERS[@]} -gt 0 ]; then
         echo "📋 Настроено серверов 1С:"
-        for server in "${ONE_C_SERVERS[@]}"; do
-            echo "  - $server"
+        for i in "${!ONE_C_SERVERS[@]}"; do
+            echo "  - ${ONE_C_PATHS[$i]} → ${ONE_C_SERVERS[$i]}"
         done
         echo ""
     else
@@ -460,8 +492,10 @@ main() {
     echo "  3. Проверит модули Apache"
     echo "  4. Установит приложение"
     echo "  5. Интерактивно добавит серверы 1С"
-    echo "  6. Настроит ProxyPass (ПЕРЕД исключениями!)"
-    echo "  7. Проверит работу после установки"
+    echo "  6. Настроит ProxyPass (РАБОЧАЯ КОНФИГУРАЦИЯ)"
+    echo "  7. Добавит mod_substitute для переписывания URL"
+    echo "  8. Отключит AllowOverride для работы прокси"
+    echo "  9. Проверит работу после установки"
     echo ""
     
     read -p "Продолжить установку? [Y/n]: " confirm
