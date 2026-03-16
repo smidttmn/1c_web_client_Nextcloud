@@ -75,11 +75,21 @@ class PageController extends Controller {
 
 		$response = new TemplateResponse('one_c_web_client_v3', 'index', $params);
 
-		// CSP настраивается автоматически на основе сохранённых баз 1С
-		// При необходимости добавьте домены 1С вручную:
-		// $csp->addAllowedFrameDomain('https://1c.example.com');
-		// $csp->addAllowedScriptDomain('https://1c.example.com');
+		// CSP: добавляем все 1С серверы из базы
 		$csp = new ContentSecurityPolicy();
+		foreach ($databases as $db) {
+			$url = $db['url'] ?? '';
+			if (!empty($url)) {
+				// Извлекаем домен из URL
+				$parsedUrl = parse_url($url);
+				if (isset($parsedUrl['host'])) {
+					$domain = $parsedUrl['scheme'] . '://' . $parsedUrl['host'];
+					$csp->addAllowedFrameDomain($domain);
+					$csp->addAllowedScriptDomain($domain);
+					$csp->addAllowedConnectDomain($domain);
+				}
+			}
+		}
 		$response->setContentSecurityPolicy($csp);
 
 		return $response;
