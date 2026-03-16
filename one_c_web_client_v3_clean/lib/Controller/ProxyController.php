@@ -127,7 +127,7 @@ class ProxyController extends Controller {
 		$basePath = dirname($parsedUrl['path'] ?? '/');
 
 		// Create proxy URL prefix manually
-		$proxyPrefix = '/index.php/apps/one_c_web_client/proxy';
+		$proxyPrefix = '/index.php/apps/one_c_web_client_v3/proxy';
 
 		// Rewrite src and href attributes
 		$html = preg_replace_callback(
@@ -155,11 +155,42 @@ class ProxyController extends Controller {
 
 				// Wrap in proxy URL
 				$proxiedUrl = $proxyPrefix . '?url=' . urlencode($absoluteUrl);
-				
+
 				return $attr . '="' . $proxiedUrl . '"';
 			},
 			$html
 		);
+
+		// Rewrite JavaScript XHR/fetch URLs by injecting a script
+		$rewriteScript = '<script>
+(function() {
+	var originalOpen = XMLHttpRequest.prototype.open;
+	var proxyPrefix = "' . $proxyPrefix . '?url=";
+	var baseHost = "' . $baseHost . '";
+	var basePath = "' . $basePath . '";
+	var baseProtocol = "' . $baseProtocol . '";
+	
+	XMLHttpRequest.prototype.open = function(method, url, async) {
+		if (url && !url.startsWith(proxyPrefix) && !url.startsWith("data:") && !url.startsWith("blob:") && !url.startsWith("javascript:")) {
+			var absoluteUrl;
+			if (url.startsWith("/")) {
+				absoluteUrl = baseProtocol + "://" + baseHost + url;
+			} else if (url.startsWith("http")) {
+				absoluteUrl = url;
+			} else {
+				absoluteUrl = baseProtocol + "://" + baseHost + basePath + "/" + url;
+			}
+			url = proxyPrefix + encodeURIComponent(absoluteUrl);
+		}
+		return originalOpen.call(this, method, url, async);
+	};
+})();
+</script>';
+		
+		// Inject after <head>
+		if (strpos($html, '<head>') !== false) {
+			$html = str_replace('<head>', '<head>' . $rewriteScript, $html);
+		}
 
 		// Add base tag to handle any remaining relative URLs
 		if (strpos($html, '<head>') !== false) {
