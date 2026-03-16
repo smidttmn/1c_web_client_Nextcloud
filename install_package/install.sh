@@ -407,8 +407,8 @@ EOF
 
         cat >> "$directives_file" << EOF
     # Прокси для путей 1С: ${base_path}
-    ProxyPass ${base_path} ${server_url}${base_path}
-    ProxyPassReverse ${base_path} ${server_url}${base_path}
+    ProxyPass /${base_path} ${server_url}/${base_path}
+    ProxyPassReverse /${base_path} ${server_url}/${base_path}
 
 EOF
     done
