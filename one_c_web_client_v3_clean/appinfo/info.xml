@@ -14,7 +14,7 @@
         - Красивый адаптивный интерфейс
         - Полная поддержка Nextcloud 30-32
     ]]></description>
-    <version>6.0.1</version>
+    <version>7.0.0</version>
     <licence>agpl</licence>
     <author mail="admin@example.com">Nextcloud Team</author>
     <namespace>OneCWebClient</namespace>
