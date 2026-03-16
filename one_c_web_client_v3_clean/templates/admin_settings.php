@@ -44,6 +44,13 @@
 </div>
 
 <style>
+.section {
+    padding: 20px 0;
+    border-bottom: 1px solid #eee;
+    max-height: calc(100vh - 200px);
+    overflow-y: auto;
+}
+
 .database-entry {
     display: flex;
     gap: 10px;
@@ -79,10 +86,5 @@
 
 #one_c_web_client_settings_msg {
     margin-top: 15px;
-}
-
-.section {
-    padding: 20px 0;
-    border-bottom: 1px solid #eee;
 }
 </style>
