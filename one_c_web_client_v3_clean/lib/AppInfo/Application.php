@@ -3,6 +3,8 @@ namespace OCA\OneCWebClient\AppInfo;
 
 use OCA\OneCWebClient\Controller\PageController;
 use OCA\OneCWebClient\Controller\ConfigController;
+use OCA\OneCWebClient\Settings\AdminSettings;
+use OCA\OneCWebClient\Settings\AdminSection;
 use OCP\AppFramework\App;
 use OCP\AppFramework\Bootstrap\IBootContext;
 use OCP\AppFramework\Bootstrap\IBootstrap;
@@ -20,6 +22,7 @@ class Application extends App implements IBootstrap {
 	}
 	
 	public function register(IRegistrationContext $context): void {
+		// Регистрируем контроллеры
 		$context->registerService(PageController::class, function($c) {
 			return new PageController(
 				$c->get('AppName'),
@@ -36,6 +39,18 @@ class Application extends App implements IBootstrap {
 				$c->get(IRequest::class),
 				$c->get(IConfig::class),
 				$c->get(IL10N::class)
+			);
+		});
+		
+		// Регистрируем настройки админки
+		$context->registerService(AdminSettings::class, function($c) {
+			return new AdminSettings($c->get(IConfig::class));
+		});
+		
+		$context->registerService(AdminSection::class, function($c) {
+			return new AdminSection(
+				$c->get(IL10N::class),
+				$c->get(IURLGenerator::class)
 			);
 		});
 	}
