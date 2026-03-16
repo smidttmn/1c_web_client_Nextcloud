@@ -118,8 +118,8 @@
 
             // Отправка данных на сервер
             const saveUrl = typeof OC !== 'undefined' && OC.generateUrl 
-                ? OC.generateUrl('/apps/one_c_web_client/config/save')
-                : '/apps/one_c_web_client/config/save';
+                ? OC.generateUrl('/apps/one_c_web_client_v3/config/save')
+                : '/apps/one_c_web_client_v3/config/save';
             
             const requestToken = typeof OC !== 'undefined' && OC.requestToken 
                 ? OC.requestToken 
