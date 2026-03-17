@@ -195,18 +195,16 @@ install_app() {
     chown -R www-data:www-data "$app_dest"
     chmod -R 755 "$app_dest"
     print_success "Права установлены"
-    
-    # Установка через occ
-    print_info "Установка приложения через occ..."
-    if sudo -u www-data php "$NEXTCLOUD_PATH/occ" app:install "$APP_NAME" 2>/dev/null; then
-        print_success "Приложение установлено"
-    elif sudo -u www-data php "$NEXTCLOUD_PATH/occ" app:enable "$APP_NAME" 2>/dev/null; then
+
+    # Включение приложения (не установка из appstore!)
+    print_info "Включение приложения..."
+    if sudo -u www-data php "$NEXTCLOUD_PATH/occ" app:enable "$APP_NAME" 2>/dev/null; then
         print_success "Приложение включено"
     else
-        print_error "Не удалось установить приложение"
+        print_error "Не удалось включить приложение"
         exit 1
     fi
-    
+
     # Очистка кэша
     sudo -u www-data php "$NEXTCLOUD_PATH/occ" maintenance:repair 2>/dev/null || true
     print_success "Кэш очищен"

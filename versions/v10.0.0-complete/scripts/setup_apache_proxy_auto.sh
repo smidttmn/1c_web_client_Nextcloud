@@ -239,7 +239,7 @@ EOF
 
     # 7. Разрешение фреймов и CSP
     Header unset X-Frame-Options
-    Header always set Content-Security-Policy \"frame-ancestors 'self'; frame-src *; connect-src *; script-src 'self' 'unsafe-inline' 'unsafe-eval' *; style-src 'self' 'unsafe-inline' *;\"
+    Header always set Content-Security-Policy "frame-ancestors 'self'; frame-src *; connect-src *; script-src 'self' 'unsafe-inline' 'unsafe-eval' *; style-src 'self' 'unsafe-inline' *;"
 
     # ===================================================================
     # END one_c_web_client_v3
