@@ -45,9 +45,13 @@
                 return;
             }
 
-            // Открываем фрейм напрямую по HTTPS
-            console.log('one_c_web_client: Opening directly via HTTPS:', url);
-            frame.src = url;
+            // Открываем фрейм через прокси Nextcloud
+            // Извлекаем путь из URL (например, /sgtbuh/ из https://10.72.1.5/sgtbuh/)
+            const urlObj = new URL(url);
+            const proxyPath = '/one_c_web_client_v3' + urlObj.pathname;
+            
+            console.log('one_c_web_client: Opening via proxy:', proxyPath);
+            frame.src = proxyPath;
             frameTitle.textContent = dbName + ' - ' + url;
 
             // Показываем фрейм и заголовок
